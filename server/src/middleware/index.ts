@@ -35,6 +35,8 @@ export const ReqHeaderMiddleware = (
     `/api/v1/milvus/connect`,
     `/api/v1/milvus/version`,
     `/api/v1/tcvectordb/test`,
+    `/api/v1/tcvectordb/collections/list`,
+    `/api/v1/tcvectordb/collections/create`,
   ];
 
   if (
@@ -79,7 +81,7 @@ export const ErrorMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  let statusCode = err.statusCode || 500;
+  let statusCode = err.statusCode || (err as any).status || 500;
   if (!isElectron()) {
     console.log(
       chalk.blue.bold(req.method, req.url),
