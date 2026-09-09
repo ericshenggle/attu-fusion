@@ -3,6 +3,7 @@ import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import Icons from '@/components/icons/Icons';
 import { AuthForm } from './AuthForm';
+import { TencentVectorDbPanel } from './TencentVectorDbPanel';
 import CustomButton from '@/components/customButton/CustomButton';
 import { MilvusService } from '@/http';
 import Box from '@mui/material/Box';
@@ -187,8 +188,11 @@ const ConnectContainer = () => {
             borderRadius: '0 8px 8px 0',
             padding: (theme: Theme) => theme.spacing(6, 0),
             backgroundColor: 'background.paper',
+            maxHeight: 'calc(100vh - 32px)',
+            overflowY: 'auto',
           }}
         >
+          <TencentVectorDbPanel />
           <AuthForm />
         </Box>
       </Box>

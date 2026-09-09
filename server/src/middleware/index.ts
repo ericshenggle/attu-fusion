@@ -31,7 +31,11 @@ export const ReqHeaderMiddleware = (
     req.db_name = database;
   }
 
-  const bypassURLs = [`/api/v1/milvus/connect`, `/api/v1/milvus/version`];
+  const bypassURLs = [
+    `/api/v1/milvus/connect`,
+    `/api/v1/milvus/version`,
+    `/api/v1/tcvectordb/test`,
+  ];
 
   if (
     bypassURLs.indexOf(req.url) === -1 &&
