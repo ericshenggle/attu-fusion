@@ -16,10 +16,12 @@ export * from './partitions.type';
 export * from './users.type';
 
 export type AuthReq = {
+  provider?: 'milvus' | 'tcvectordb';
   username: string;
   password: string;
   address: string;
   token: string;
+  apiKey?: string;
   ssl: boolean;
   database: string;
   checkHealth: boolean;
@@ -27,6 +29,7 @@ export type AuthReq = {
 };
 
 export type AuthObject = {
+  provider: 'milvus' | 'tcvectordb';
   clientId: string;
   database: string;
 };

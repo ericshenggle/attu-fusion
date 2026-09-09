@@ -48,7 +48,7 @@ const { Provider } = rootContext;
 // notice type mean it's a notice dialog you need to set props like title, content, actions
 // custom type could have own state, you could set a complete component in dialog.
 export const RootProvider = (props: { children: React.ReactNode }) => {
-  const { isAuth } = useContext(authContext);
+  const { isAuth, authReq } = useContext(authContext);
 
   const { snackBar, setSnackBar, openSnackBar, handleSnackBarClose } =
     useSnackBar();
@@ -63,7 +63,7 @@ export const RootProvider = (props: { children: React.ReactNode }) => {
   const [versionInfo, setVersionInfo] = useState({ attu: '', sdk: '' });
 
   useEffect(() => {
-    if (isAuth) {
+    if (isAuth && authReq.provider !== 'tcvectordb') {
       const fetchVersion = async () => {
         const res = await MilvusService.getVersion();
         setVersionInfo(res as any);
@@ -93,7 +93,7 @@ export const RootProvider = (props: { children: React.ReactNode }) => {
         open: false,
       });
     }
-  }, [isAuth, setSnackBar, setDialog, setDialog2, setDrawer]);
+  }, [isAuth, authReq.provider, setSnackBar, setDialog, setDialog2, setDrawer]);
 
   return (
     <Provider

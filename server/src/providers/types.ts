@@ -16,6 +16,10 @@ export type ProviderCollectionRequest = ProviderConnectionRequest & {
   database: string;
 };
 
+export type ProviderConnectRequest = ProviderCollectionRequest & {
+  clientId: string;
+};
+
 export type ProviderCollection = {
   database: string;
   collection: string;
@@ -39,6 +43,11 @@ export interface VectorDbProvider {
   testConnection(
     request: ProviderConnectionRequest
   ): Promise<ProviderConnectionResult>;
+  connect(request: ProviderConnectRequest): Promise<{
+    provider: VectorDbProviderName;
+    clientId: string;
+    database: string;
+  }>;
   listCollections(request: ProviderCollectionRequest): Promise<ProviderCollection[]>;
   createCollection(
     request: ProviderCreateCollectionRequest

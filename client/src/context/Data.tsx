@@ -32,7 +32,8 @@ const { Provider } = dataContext;
 
 export const DataProvider = (props: { children: React.ReactNode }) => {
   // auth context
-  const { clientId } = useContext(authContext);
+  const { clientId, authReq } = useContext(authContext);
+  const isMilvus = authReq.provider !== 'tcvectordb';
 
   // UI preferences hook
   const { ui, setUIPref } = useUIPrefs();
@@ -55,7 +56,7 @@ export const DataProvider = (props: { children: React.ReactNode }) => {
 
   // WebSocket Hook
   const { connected } = useWebSocket({
-    isAuth: !!clientId,
+    isAuth: !!clientId && isMilvus,
     clientId,
     database,
     onCollectionUpdate: updateCollections,
@@ -68,7 +69,7 @@ export const DataProvider = (props: { children: React.ReactNode }) => {
     } else {
       setCollections([]);
     }
-  }, [connected, database]);
+  }, [connected, database, isMilvus]);
 
   return (
     <Provider

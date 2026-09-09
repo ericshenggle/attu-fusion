@@ -7,7 +7,8 @@ import type { CollectionObject, CollectionFullObject } from '@server/types';
 
 export function useCollectionsManagement(database: string) {
   const [collections, setCollections] = useState<CollectionObject[]>([]);
-  const { isAuth } = useContext(authContext);
+  const { isAuth, authReq } = useContext(authContext);
+  const canUseMilvus = isAuth && authReq.provider !== 'tcvectordb';
 
   const [loading, setLoading] = useState(true);
   const [isBatchRefreshing, setIsBatchRefreshing] = useState(false);
@@ -114,12 +115,12 @@ export function useCollectionsManagement(database: string) {
   }
 
   useEffect(() => {
-    if (!isAuth) {
+    if (!canUseMilvus) {
       // clear collections when not authenticated
       setCollections([]);
       clearRefreshCollectionsDebounceMapRef();
     }
-  }, [isAuth]);
+  }, [canUseMilvus]);
 
   // Update the ref when database changes
   useEffect(() => {
@@ -151,7 +152,7 @@ export function useCollectionsManagement(database: string) {
 
   const fetchCollection = useCallback(
     async (name: string, drop?: boolean) => {
-      if (!isAuth) return;
+      if (!canUseMilvus) return;
       if (drop) {
         updateCollections({ collections: [], deletedNames: [name] });
       } else {
@@ -159,13 +160,13 @@ export function useCollectionsManagement(database: string) {
         updateCollections({ collections: [res] });
       }
     },
-    [isAuth, updateCollections]
+    [canUseMilvus, updateCollections]
   );
 
   const batchRefreshCollections = useCallback(
     async (collectionNames: string[], key: string = 'default') => {
       // if not logged in, do not refresh collections
-      if (!isAuth) return;
+      if (!canUseMilvus) return;
       let ref = refreshCollectionsDebounceMapRef.current.get(key);
       if (!ref) {
         ref = { timer: null, names: [], pending: new Set() };
@@ -231,7 +232,7 @@ export function useCollectionsManagement(database: string) {
         }
       }, 200);
     },
-    [collections, updateCollections, isAuth] // Removed database dependency
+    [collections, updateCollections, canUseMilvus] // Removed database dependency
   );
 
   return {

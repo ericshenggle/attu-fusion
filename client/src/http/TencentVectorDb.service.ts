@@ -1,4 +1,5 @@
 import BaseModel from './BaseModel';
+import type { AuthObject } from '@server/types';
 
 export type TencentVectorDbTestRequest = {
   endpoint: string;
@@ -22,7 +23,18 @@ export type TencentVectorDbCollectionRequest = TencentVectorDbTestRequest & {
   database: string;
 };
 
+export type TencentVectorDbConnectRequest = TencentVectorDbCollectionRequest & {
+  clientId: string;
+};
+
 export class TencentVectorDbService extends BaseModel {
+  static connect(data: TencentVectorDbConnectRequest) {
+    return super.create<AuthObject>({
+      path: '/tcvectordb/connect',
+      data,
+    });
+  }
+
   static testConnection(data: TencentVectorDbTestRequest) {
     return super.create<TencentVectorDbTestResponse>({
       path: '/tcvectordb/test',

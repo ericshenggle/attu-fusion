@@ -8,8 +8,10 @@ import CustomButton from '@/components/customButton/CustomButton';
 import { MilvusService } from '@/http';
 import Box from '@mui/material/Box';
 import type { Theme } from '@mui/material/styles';
-import { ColorModeContext } from '@/context';
+import { ColorModeContext, authContext } from '@/context';
 import { IconButton } from '@mui/material';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import {
   ATTU_SOURCE_CODE,
   ATTU_ISSUES,
@@ -22,6 +24,10 @@ const ConnectContainer = () => {
   const { t: commonTrans } = useTranslation();
   const { t: btnTrans } = useTranslation('btn');
   const { mode, toggleColorMode } = useContext(ColorModeContext);
+  const { authReq, setAuthReq } = useContext(authContext);
+  const [provider, setProvider] = useState<'milvus' | 'tcvectordb'>(
+    authReq.provider || 'milvus'
+  );
 
   useEffect(() => {
     MilvusService.getVersion().then((res: any) => {
@@ -192,8 +198,26 @@ const ConnectContainer = () => {
             overflowY: 'auto',
           }}
         >
-          <TencentVectorDbPanel />
-          <AuthForm />
+          <Box sx={{ px: 3, mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Connect provider
+            </Typography>
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              size="small"
+              value={provider}
+              onChange={(_, value) => {
+                if (!value) return;
+                setProvider(value);
+                setAuthReq(current => ({ ...current, provider: value }));
+              }}
+            >
+              <ToggleButton value="milvus">Milvus</ToggleButton>
+              <ToggleButton value="tcvectordb">Tencent VectorDB</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+          {provider === 'tcvectordb' ? <TencentVectorDbPanel /> : <AuthForm />}
         </Box>
       </Box>
     </Box>

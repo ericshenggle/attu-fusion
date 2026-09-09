@@ -5,6 +5,7 @@ import type { DatabaseObject } from '@server/types';
 
 export const useDatabaseManagement = () => {
   const { authReq, isAuth, logout, setAuthReq } = useContext(authContext);
+  const isMilvus = authReq.provider !== 'tcvectordb';
 
   const [databases, setDatabases] = useState<DatabaseObject[]>([]);
   const [loadingDatabases, setLoadingDatabases] = useState(true);
@@ -37,7 +38,7 @@ export const useDatabaseManagement = () => {
 
   // Effect to fetch initial databases when authenticated
   useEffect(() => {
-    if (isAuth) {
+    if (isAuth && isMilvus) {
       if (database !== authReq.database) setDatabase(authReq.database);
       fetchDatabases(true);
     } else {
@@ -45,15 +46,15 @@ export const useDatabaseManagement = () => {
       setDatabases([]);
       setLoadingDatabases(false);
     }
-  }, [isAuth, authReq.database, fetchDatabases]); // Added fetchDatabases dependency
+  }, [isAuth, isMilvus, authReq.database, fetchDatabases]); // Added fetchDatabases dependency
 
   // Effect to update auth context when local database state changes
   useEffect(() => {
     // Only update if the database actually changed from the auth context one
-    if (authReq.database !== database && isAuth) {
+    if (authReq.database !== database && isAuth && isMilvus) {
       setAuthReq({ ...authReq, database });
     }
-  }, [isAuth, database, authReq, setAuthReq]);
+  }, [isAuth, isMilvus, database, authReq, setAuthReq]);
 
   return {
     databases,

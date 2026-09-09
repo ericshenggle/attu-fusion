@@ -5,6 +5,7 @@ import {
   ProviderMutationResponse,
   VectorDbProvider,
 } from '../providers/types';
+import { AuthObject } from '../types';
 
 export type TencentVectorDbTestRequest = {
   endpoint: string;
@@ -18,6 +19,10 @@ export type TencentVectorDbCollection = ProviderCollection;
 
 export type TencentVectorDbCollectionRequest = TencentVectorDbTestRequest & {
   database: string;
+};
+
+export type TencentVectorDbConnectRequest = TencentVectorDbCollectionRequest & {
+  clientId: string;
 };
 
 export type TencentVectorDbCreateCollectionRequest =
@@ -86,6 +91,15 @@ export class TencentVectorDbService implements VectorDbProvider {
       '/collection/list',
       { database: request.database }
     ).then(body => body.collections || []);
+  }
+
+  async connect(request: TencentVectorDbConnectRequest): Promise<AuthObject> {
+    const response = await this.testConnection(request);
+    const database = request.database.trim() || response.databases[0] || 'default';
+    if (response.databases.length > 0 && !response.databases.includes(database)) {
+      throw new Error(`TCVectordb database does not exist: ${database}.`);
+    }
+    return { provider: this.name, clientId: request.clientId, database };
   }
 
   async createCollection(

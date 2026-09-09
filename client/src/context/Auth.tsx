@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState, useMemo } from 'react';
 import { AuthContextType } from './Types';
-import { MilvusService } from '@/http';
+import { MilvusService, TencentVectorDbService } from '@/http';
 import {
   MILVUS_CLIENT_ID,
   MILVUS_URL,
@@ -12,6 +12,7 @@ import type { AuthReq } from '@server/types';
 export const authContext = createContext<AuthContextType>({
   clientId: '',
   authReq: {
+    provider: 'milvus',
     username: '',
     password: '',
     address: '',
@@ -27,7 +28,7 @@ export const authContext = createContext<AuthContextType>({
   isDedicated: false,
   isAuth: false,
   login: async () => {
-    return { clientId: '', database: '' };
+    return { provider: 'milvus', clientId: '', database: '' };
   },
   logout: () => {},
 });
@@ -76,8 +77,16 @@ export const AuthProvider = (props: { children: React.ReactNode }) => {
     params.clientId = Math.random().toString(36).substring(7);
     // only set clientId once
     window.localStorage.setItem(MILVUS_CLIENT_ID, params.clientId);
-    const res = await MilvusService.connect(params);
-    setAuthReq({ ...params, database: res.database });
+    const res = params.provider === 'tcvectordb'
+      ? await TencentVectorDbService.connect({
+          endpoint: params.address,
+          account: params.username,
+          apiKey: params.apiKey || params.token,
+          database: params.database,
+          clientId: params.clientId,
+        })
+      : await MilvusService.connect(params);
+    setAuthReq({ ...params, provider: res.provider, database: res.database });
     setClientId(res.clientId);
     // update clientId in localStorage if changed
     if (res.clientId !== params.clientId) {
@@ -88,7 +97,7 @@ export const AuthProvider = (props: { children: React.ReactNode }) => {
 
   // logout API
   const logout = async (pass?: boolean) => {
-    if (!pass) {
+    if (!pass && authReq.provider !== 'tcvectordb') {
       await MilvusService.closeConnection();
     }
     setClientId('');

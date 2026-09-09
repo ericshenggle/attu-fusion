@@ -2,12 +2,14 @@ import { NextFunction, Request, Response, Router } from 'express';
 import {
   TencentVectorDbCollectionRequest,
   TencentVectorDbCreateCollectionRequest,
+  TencentVectorDbConnectRequest,
   TencentVectorDbTestRequest,
 } from './tcvectordb.service';
 import {
   TencentVectorDbCollectionDto,
   TencentVectorDbConnectionDto,
   TencentVectorDbCreateCollectionDto,
+  TencentVectorDbConnectDto,
 } from './dto';
 import { dtoValidationMiddleware } from '../middleware/validation';
 import { getVectorDbProvider } from '../providers';
@@ -17,6 +19,11 @@ export class TencentVectorDbController {
   private readonly service = getVectorDbProvider('tcvectordb');
 
   generateRoutes() {
+    this.router.post(
+      '/connect',
+      dtoValidationMiddleware(TencentVectorDbConnectDto),
+      this.connect.bind(this)
+    );
     this.router.post(
       '/test',
       dtoValidationMiddleware(TencentVectorDbConnectionDto),
@@ -33,6 +40,18 @@ export class TencentVectorDbController {
       this.createCollection.bind(this)
     );
     return this.router;
+  }
+
+  async connect(
+    req: Request<{}, {}, TencentVectorDbConnectRequest>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      res.send(await this.service.connect(req.body));
+    } catch (error) {
+      next(error);
+    }
   }
 
   async testConnection(

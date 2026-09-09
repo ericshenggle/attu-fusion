@@ -34,6 +34,7 @@ export const ReqHeaderMiddleware = (
   const bypassURLs = [
     `/api/v1/milvus/connect`,
     `/api/v1/milvus/version`,
+    `/api/v1/tcvectordb/connect`,
     `/api/v1/tcvectordb/test`,
     `/api/v1/tcvectordb/collections/list`,
     `/api/v1/tcvectordb/collections/create`,

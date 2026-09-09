@@ -54,6 +54,7 @@ export class MilvusService {
         }
 
         return {
+          provider: 'milvus',
           clientId: cache.milvusClient.clientId,
           database: cache.database,
         };
@@ -149,6 +150,7 @@ export class MilvusService {
 
       // Return the address and the database (if it exists, otherwise return 'default')
       return {
+        provider: 'milvus',
         clientId: milvusClient.clientId,
         database: db,
       };
