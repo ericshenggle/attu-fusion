@@ -69,7 +69,7 @@ export const RootProvider = (props: { children: React.ReactNode }) => {
         setVersionInfo(res as any);
       };
       fetchVersion();
-    } else {
+    } else if (!isAuth) {
       // if auth is off, hide snack bar
       setSnackBar({
         open: false,

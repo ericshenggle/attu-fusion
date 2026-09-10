@@ -11,76 +11,84 @@ export const systemContext = createContext<SystemContextType>({
 
 const { Provider } = systemContext;
 export const SystemProvider = (props: { children: React.ReactNode }) => {
-  const { isAuth, isServerless } = useContext(authContext);
+  const { isAuth, isServerless, authReq, clientId } = useContext(authContext);
+  const isMilvus = authReq.provider !== 'tcvectordb';
 
   const [data, setData] = useState<any>({});
 
-  const fetchData = async () => {
-    try {
-      // fetch all data
-      const [metrics, users, roles] = await Promise.all([
-        MilvusService.getMetrics(),
-        !isServerless ? UserService.getUsers() : { usernames: [] },
-        !isServerless ? UserService.getRoles() : { results: [] },
-      ]);
-
-      // parse data
-      const parsedJson = parseJson(metrics);
-
-      // get query nodes
-      const queryNodes = getNode(
-        parsedJson.allNodes,
-        MILVUS_NODE_TYPE.QUERYNODE
-      );
-
-      // get data nodes
-      const dataNodes = getNode(parsedJson.allNodes, MILVUS_NODE_TYPE.DATANODE);
-
-      // get data nodes
-      const indexNodes = getNode(
-        parsedJson.allNodes,
-        MILVUS_NODE_TYPE.INDEXNODE
-      );
-
-      // get root coord
-      const rootCoord = getNode(
-        parsedJson.allNodes,
-        MILVUS_NODE_TYPE.ROOTCOORD
-      )[0];
-
-      // get system config
-      const systemConfig = getSystemConfigs(parsedJson.workingNodes);
-      const deployMode = rootCoord.infos.system_info?.deploy_mode;
-      const systemInfo = rootCoord.infos.system_info;
-
-      const data = {
-        users: users,
-        roles: roles,
-        queryNodes,
-        dataNodes,
-        indexNodes,
-        rootCoord,
-        deployMode,
-        parsedJson,
-        systemConfig,
-        systemInfo,
-      };
-
-      // store other datas
-      setData(data);
-    } catch (error) {
-      // do nothing
-      console.log('fetch data error', error);
-    }
-  };
-
   useEffect(() => {
-    if (isAuth) {
+    let active = true;
+    const fetchData = async () => {
+      try {
+        // fetch all data
+        const [metrics, users, roles] = await Promise.all([
+          MilvusService.getMetrics(),
+          !isServerless ? UserService.getUsers() : { usernames: [] },
+          !isServerless ? UserService.getRoles() : { results: [] },
+        ]);
+
+        // parse data
+        const parsedJson = parseJson(metrics);
+
+        // get query nodes
+        const queryNodes = getNode(
+          parsedJson.allNodes,
+          MILVUS_NODE_TYPE.QUERYNODE
+        );
+
+        // get data nodes
+        const dataNodes = getNode(
+          parsedJson.allNodes,
+          MILVUS_NODE_TYPE.DATANODE
+        );
+
+        // get data nodes
+        const indexNodes = getNode(
+          parsedJson.allNodes,
+          MILVUS_NODE_TYPE.INDEXNODE
+        );
+
+        // get root coord
+        const rootCoord = getNode(
+          parsedJson.allNodes,
+          MILVUS_NODE_TYPE.ROOTCOORD
+        )[0];
+
+        // get system config
+        const systemConfig = getSystemConfigs(parsedJson.workingNodes);
+        const deployMode = rootCoord.infos.system_info?.deploy_mode;
+        const systemInfo = rootCoord.infos.system_info;
+
+        const data = {
+          users: users,
+          roles: roles,
+          queryNodes,
+          dataNodes,
+          indexNodes,
+          rootCoord,
+          deployMode,
+          parsedJson,
+          systemConfig,
+          systemInfo,
+        };
+
+        // store other datas
+        if (active) setData(data);
+      } catch (error) {
+        // do nothing
+        console.log('fetch data error', error);
+      }
+    };
+
+    if (isAuth && isMilvus) {
       fetchData();
     } else {
       setData({});
     }
-  }, [isAuth]);
+    return () => {
+      active = false;
+    };
+  }, [isAuth, isMilvus, isServerless, clientId]);
 
   return (
     <Provider

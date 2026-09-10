@@ -77,22 +77,28 @@ export const AuthProvider = (props: { children: React.ReactNode }) => {
     params.clientId = Math.random().toString(36).substring(7);
     // only set clientId once
     window.localStorage.setItem(MILVUS_CLIENT_ID, params.clientId);
-    const res = params.provider === 'tcvectordb'
-      ? await TencentVectorDbService.connect({
-          endpoint: params.address,
-          account: params.username,
-          apiKey: params.apiKey || params.token,
-          database: params.database,
-          clientId: params.clientId,
-        })
-      : await MilvusService.connect(params);
-    setAuthReq({ ...params, provider: res.provider, database: res.database });
-    setClientId(res.clientId);
-    // update clientId in localStorage if changed
-    if (res.clientId !== params.clientId) {
-      window.localStorage.setItem(MILVUS_CLIENT_ID, res.clientId);
+    try {
+      const res = params.provider === 'tcvectordb'
+        ? await TencentVectorDbService.connect({
+            endpoint: params.address,
+            account: params.username,
+            apiKey: params.apiKey || params.token,
+            database: params.database,
+            clientId: params.clientId,
+          })
+        : await MilvusService.connect(params);
+      setAuthReq({ ...params, provider: res.provider, database: res.database });
+      setClientId(res.clientId);
+      // update clientId in localStorage if changed
+      if (res.clientId !== params.clientId) {
+        window.localStorage.setItem(MILVUS_CLIENT_ID, res.clientId);
+      }
+      return res;
+    } catch (error) {
+      setClientId('');
+      window.localStorage.removeItem(MILVUS_CLIENT_ID);
+      throw error;
     }
-    return res;
   };
 
   // logout API
