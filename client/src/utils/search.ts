@@ -26,7 +26,9 @@ export const buildSearchParams = (searchParams: SearchParams) => {
     if (s.selected) {
       data.push({
         anns_field: s.field.name,
-        data: s.field.is_function_output
+        data: (
+          s.inputMode ? s.inputMode === 'builtin' : s.field.is_function_output
+        )
           ? s.data.replace(/\n/g, '')
           : formatter(s.data),
         params: s.params,

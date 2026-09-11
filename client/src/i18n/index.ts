@@ -38,9 +38,12 @@ import actionEn from './en/action';
 import actionCn from './cn/action';
 import tcvectordbEn from './en/tcvectordb';
 import tcvectordbCn from './cn/tcvectordb';
+import embeddingEn from './en/embedding';
+import embeddingCn from './cn/embedding';
 
 export const resources = {
   'zh-CN': {
+    embedding: embeddingCn,
     tcvectordb: tcvectordbCn,
     translation: commonCn,
     btn: buttonCn,
@@ -61,6 +64,7 @@ export const resources = {
     action: actionCn,
   },
   en: {
+    embedding: embeddingEn,
     tcvectordb: tcvectordbEn,
     translation: commonEn,
     btn: buttonEn,

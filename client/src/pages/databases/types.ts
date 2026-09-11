@@ -2,13 +2,14 @@ import type {
   FieldObject,
   CollectionObject,
   PartitionData,
-  SearchResultData
+  SearchResultData,
 } from '@server/types';
 
 export type SearchSingleParams = {
   anns_field: string;
   params: Record<string, any>;
   data: string;
+  inputMode?: 'builtin' | 'external' | 'vector';
   expanded: boolean;
   selected: boolean;
   field: FieldObject;

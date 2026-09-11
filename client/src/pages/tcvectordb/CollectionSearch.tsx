@@ -24,6 +24,15 @@ import { requestError } from './CreateCollectionDialog';
 import DocumentTable, { downloadDocuments } from './DocumentTable';
 import ReadOptions, { defaultReadSettings } from './ReadOptions';
 import QueryHelp from './QueryHelp';
+import {
+  isCombinedVector,
+  sparseToPairs,
+} from '@/components/embedding/vectors';
+import type { EmbeddingOutputType } from '@server/embedding/types';
+import SearchEmbeddingInput, {
+  SearchEmbeddingInputHandle,
+  SearchInputMode,
+} from '@/components/embedding/SearchEmbeddingInput';
 
 export default function CollectionSearch({
   collection,
@@ -31,9 +40,12 @@ export default function CollectionSearch({
   collection: ProviderCollection;
 }) {
   const { t } = useTranslation('tcvectordb');
-  const [mode, setMode] = useState<
-    'vector' | 'id' | 'text' | 'hybrid' | 'fulltext'
-  >('vector');
+  const [mode, setMode] = useState<'similarity' | 'id' | 'hybrid' | 'fulltext'>(
+    'similarity'
+  );
+  const [inputMode, setInputMode] = useState<SearchInputMode>('vector');
+  const [inputReady, setInputReady] = useState(false);
+  const embeddingInput = useRef<SearchEmbeddingInputHandle>(null);
   const [input, setInput] = useState('');
   const [limit, setLimit] = useState(10);
   const [ef, setEf] = useState(200);
@@ -51,12 +63,20 @@ export default function CollectionSearch({
     };
   }, []);
   const index = collection.indexes?.find(i => i.fieldName === 'vector');
+  const sparseIndex = collection.indexes?.find(
+    i => i.fieldName === 'sparse_vector'
+  );
   const resultRows =
     result?.documents.reduce<ProviderDocument[]>(
       (rows, group) => rows.concat(group),
       []
     ) || [];
   const binary = index?.fieldType === 'binary_vector';
+  const outputTypes: EmbeddingOutputType[] = [
+    ...(index && !binary ? ['dense' as const] : []),
+    ...(sparseIndex ? ['sparse' as const] : []),
+    ...(index && !binary && sparseIndex ? ['dense&sparse' as const] : []),
+  ];
   const dimension = index?.dimension;
   const expectedLength =
     dimension === undefined ? undefined : binary ? dimension / 8 : dimension;
@@ -65,32 +85,100 @@ export default function CollectionSearch({
     setError('');
     setResult(undefined);
     let vectors: number[][] | undefined;
-    if (mode === 'vector') {
-      try {
-        const vector: unknown = JSON.parse(input);
-        if (
-          !Array.isArray(vector) ||
-          !vector.length ||
-          (expectedLength !== undefined && vector.length !== expectedLength) ||
-          vector.some(
-            v =>
-              typeof v !== 'number' ||
-              !Number.isFinite(v) ||
-              (binary && (!Number.isInteger(v) || v < 0 || v > 255))
-          )
-        ) {
-          setError(t('invalidVector', { dimension: expectedLength ?? '--' }));
-          return;
-        }
-        vectors = [vector];
-      } catch {
-        setError(t('invalidJson'));
-        return;
-      }
-    }
     setBusy(true);
     const start = performance.now();
     try {
+      const resolved =
+        mode === 'similarity'
+          ? await embeddingInput.current!.resolve()
+          : undefined;
+      let sparse: number[][] | undefined;
+      if (mode === 'similarity' && inputMode !== 'builtin') {
+        try {
+          const parsed: unknown = JSON.parse(resolved!.data);
+          const vector: unknown = isCombinedVector(parsed)
+            ? parsed.dense
+            : Array.isArray(parsed) && !Array.isArray(parsed[0])
+              ? parsed
+              : undefined;
+          if (isCombinedVector(parsed) || vector === undefined) {
+            if (!sparseIndex)
+              throw new Error('This collection has no sparse vector index.');
+            sparse = sparseToPairs(
+              isCombinedVector(parsed) ? parsed.sparse : parsed
+            );
+          }
+          if (vector !== undefined) {
+            if (
+              !index ||
+              !Array.isArray(vector) ||
+              !vector.length ||
+              (expectedLength !== undefined &&
+                vector.length !== expectedLength) ||
+              vector.some(
+                v =>
+                  typeof v !== 'number' ||
+                  !Number.isFinite(v) ||
+                  (binary && (!Number.isInteger(v) || v < 0 || v > 255))
+              )
+            ) {
+              setError(
+                t('invalidVector', { dimension: expectedLength ?? '--' })
+              );
+              return;
+            }
+            vectors = [vector];
+          }
+        } catch (e) {
+          setError(requestError(e));
+          return;
+        }
+      }
+      if (!alive.current) return;
+      if (sparse) {
+        const { readConsistency, ...readOptions } = settings;
+        const params =
+          index?.indexType === 'HNSW'
+            ? { ef }
+            : index?.indexType.startsWith('IVF')
+              ? { nprobe }
+              : {};
+        const search = {
+          ...readOptions,
+          limit,
+          match: [{ fieldName: 'sparse_vector', data: [sparse], limit }],
+          ...(vectors
+            ? {
+                ann: [{ fieldName: 'vector', data: vectors, params, limit }],
+                rerank:
+                  resolved!.rerank.method === 'rrf'
+                    ? { method: 'rrf', k: resolved!.rerank.k }
+                    : {
+                        method: 'weighted',
+                        fieldList: ['vector', 'sparse_vector'],
+                        weight: [
+                          resolved!.rerank.denseWeight,
+                          1 - resolved!.rerank.denseWeight,
+                        ],
+                      },
+              }
+            : {}),
+        };
+        const request = {
+          database: collection.database,
+          collection: collection.collection,
+          readConsistency,
+          search,
+        };
+        const response = vectors
+          ? await TencentVectorDbService.hybridSearch(request)
+          : await TencentVectorDbService.fullTextSearch(request);
+        if (alive.current) {
+          setResult(response);
+          setElapsed(Math.round(performance.now() - start));
+        }
+        return;
+      }
       if (mode === 'hybrid' || mode === 'fulltext') {
         const advanced = JSON.parse(input) as Record<string, unknown>;
         const response =
@@ -164,43 +252,54 @@ export default function CollectionSearch({
             }}
             aria-label={t('searchMode')}
           >
-            <ToggleButton value="vector">{t('vector')}</ToggleButton>
+            <ToggleButton value="similarity">{t('vector')}</ToggleButton>
             <ToggleButton value="id">{t('documentId')}</ToggleButton>
-            {collection.embedding?.status === 'enabled' && (
-              <ToggleButton value="text">{t('text')}</ToggleButton>
-            )}
             <ToggleButton value="hybrid">{t('hybrid')}</ToggleButton>
             <ToggleButton value="fulltext">{t('fullText')}</ToggleButton>
           </ToggleButtonGroup>
-          <TextField
-            fullWidth
-            required
-            size="small"
-            multiline={mode !== 'id'}
-            minRows={mode === 'id' ? undefined : 3}
-            maxRows={8}
-            label={
-              mode === 'vector'
-                ? t('vectorJson')
-                : mode === 'id'
-                  ? t('documentId')
-                  : mode === 'text'
-                    ? t('searchText')
-                    : t('advancedSearchJson')
-            }
-            value={input}
-            disabled={busy}
-            onChange={e => setInput(e.target.value)}
-            inputProps={
-              mode === 'id'
-                ? { maxLength: 128 }
-                : {
-                    style: {
-                      fontFamily: mode === 'vector' ? 'monospace' : undefined,
-                    },
-                  }
-            }
-          />
+          {mode === 'similarity' ? (
+            <SearchEmbeddingInput
+              ref={embeddingInput}
+              mode={inputMode}
+              onModeChange={value => {
+                setInputMode(value);
+                setInput('');
+                setResult(undefined);
+                setError('');
+              }}
+              input={input}
+              onInputChange={setInput}
+              dimension={dimension}
+              builtinAvailable={collection.embedding?.status === 'enabled'}
+              builtinModel={collection.embedding?.model}
+              externalAvailable={!!outputTypes.length}
+              outputTypes={outputTypes}
+              disabled={busy}
+              onReadyChange={setInputReady}
+            />
+          ) : (
+            <TextField
+              fullWidth
+              required
+              size="small"
+              multiline={mode !== 'id'}
+              minRows={mode === 'id' ? undefined : 3}
+              maxRows={8}
+              label={mode === 'id' ? t('documentId') : t('advancedSearchJson')}
+              value={input}
+              disabled={busy}
+              onChange={e => setInput(e.target.value)}
+              inputProps={
+                mode === 'id'
+                  ? { maxLength: 128 }
+                  : {
+                      style: {
+                        fontFamily: 'monospace',
+                      },
+                    }
+              }
+            />
+          )}
           <Box
             sx={{
               display: 'flex',
@@ -266,7 +365,9 @@ export default function CollectionSearch({
               type="submit"
               variant="contained"
               startIcon={<icons.search />}
-              disabled={busy || !input.trim()}
+              disabled={
+                busy || (mode === 'similarity' ? !inputReady : !input.trim())
+              }
             >
               {t('search')}
             </Button>

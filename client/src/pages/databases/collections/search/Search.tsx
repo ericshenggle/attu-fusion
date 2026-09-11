@@ -1,5 +1,12 @@
-import { useState, useMemo, ChangeEvent, useCallback, useContext } from 'react';
-import { Typography, AccordionSummary, Checkbox } from '@mui/material';
+import {
+  useState,
+  useMemo,
+  ChangeEvent,
+  useCallback,
+  useContext,
+  useRef,
+} from 'react';
+import { Alert, Typography, AccordionSummary, Checkbox } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { DataService, CollectionService } from '@/http';
 import Icons from '@/components/icons/Icons';
@@ -11,6 +18,10 @@ import { getLabelDisplayedRows } from '@/pages/search/Utils';
 import { useSearchResult, usePaginationHook } from '@/hooks';
 import SearchGlobalParams from './SearchGlobalParams';
 import VectorInputBox from './SearchInputBox';
+import SearchEmbeddingInput, {
+  SearchEmbeddingInputHandle,
+  SearchInputMode,
+} from '@/components/embedding/SearchEmbeddingInput';
 import StatusIcon, { LoadingType } from '@/components/status/StatusIcon';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CustomInput from '@/components/customInput/CustomInput';
@@ -29,7 +40,7 @@ import {
   SearchParams as SearchParamsType,
   SearchSingleParams,
 } from '../../types';
-import { DYNAMIC_FIELD } from '@/consts';
+import { DYNAMIC_FIELD, DataTypeStringEnum } from '@/consts';
 import CollectionColHeader from '../CollectionColHeader';
 import DataView from '@/components/DataView/DataView';
 import type { GraphData, GraphNode } from '../../types';
@@ -54,6 +65,12 @@ import {
   LeftSection,
 } from './StyledComponents';
 import { authContext } from '@/context';
+import { Validator } from './utils';
+import {
+  isCombinedInput,
+  sparseToPairs,
+  pairsToMap,
+} from '@/components/embedding/vectors';
 
 export interface CollectionDataProps {
   collectionName: string;
@@ -81,10 +98,18 @@ const Search = (props: CollectionDataProps) => {
   const [tableLoading, setTableLoading] = useState<boolean>();
   const [highlightField, setHighlightField] = useState<string>('');
   const [explorerOpen, setExplorerOpen] = useState<boolean>(false);
+  const [inputReady, setInputReady] = useState<Record<string, boolean>>({});
+  const [searchError, setSearchError] = useState('');
+  const inputRefs = useRef<Record<string, SearchEmbeddingInputHandle | null>>(
+    {}
+  );
+  const lastSearch = useRef<SearchParamsType>();
+  const searchInFlight = useRef(false);
 
   // translations
   const { t: searchTrans } = useTranslation('search');
   const { t: btnTrans } = useTranslation('btn');
+  const { t: embeddingTrans } = useTranslation('embedding');
 
   // UI functions
   const handleExpand = useCallback(
@@ -137,7 +162,9 @@ const Search = (props: CollectionDataProps) => {
   const genRandomVectors = useCallback(() => {
     const s = cloneObj(searchParams) as SearchParamsType;
     s.searchParams.forEach((sp: SearchSingleParams) => {
-      sp.data = generateVectorsByField(sp.field) as any;
+      if (sp.inputMode !== 'external') {
+        sp.data = generateVectorsByField(sp.field) as any;
+      }
     });
 
     setSearchParams({ ...s });
@@ -160,6 +187,15 @@ const Search = (props: CollectionDataProps) => {
   );
 
   // on filter change
+  const onInputModeChange = (anns_field: string, mode: SearchInputMode) => {
+    const s = cloneObj(searchParams) as SearchParamsType;
+    const target = s.searchParams.find(sp => sp.anns_field === anns_field)!;
+    target.inputMode = mode;
+    target.data = '';
+    setInputReady(ready => ({ ...ready, [anns_field]: false }));
+    setSearchParams(s);
+  };
+
   const onFilterChange = useCallback(
     (value: string) => {
       const s = cloneObj(searchParams) as SearchParamsType;
@@ -202,19 +238,82 @@ const Search = (props: CollectionDataProps) => {
 
   // execute search
   const onSearchClicked = useCallback(async () => {
-    const params = buildSearchParams(searchParams);
+    if (searchInFlight.current) return;
+    searchInFlight.current = true;
     setExplorerOpen(false);
-
+    setSearchError('');
     setTableLoading(true);
     try {
+      const prepared = cloneObj(searchParams) as SearchParamsType;
+      for (const field of prepared.searchParams.filter(sp => sp.selected)) {
+        const input = inputRefs.current[field.anns_field];
+        if (!input) throw new Error(embeddingTrans('incomplete'));
+        const resolved = await input.resolve();
+        field.data = resolved.data;
+        if (field.inputMode === 'external') field.inputMode = 'vector';
+        const builtin =
+          field.inputMode === 'builtin' ||
+          (!field.inputMode && field.field.is_function_output);
+        if (!builtin && isCombinedInput(field.data)) {
+          const sparseField = prepared.searchParams.find(
+            sp => sp.anns_field === resolved.sparseTarget
+          );
+          if (
+            !sparseField ||
+            sparseField.selected ||
+            sparseField.field.data_type !==
+              DataTypeStringEnum.SparseFloatVector ||
+            sparseField.field.index.metricType === 'BM25' ||
+            prepared.searchParams.filter(sp => sp.selected).length !== 1
+          )
+            throw new Error(embeddingTrans('invalidHybrid'));
+          const both = JSON.parse(field.data);
+          field.data = JSON.stringify(both.dense);
+          sparseField.data = JSON.stringify(
+            pairsToMap(sparseToPairs(both.sparse))
+          );
+          sparseField.inputMode = 'vector';
+          sparseField.selected = true;
+          prepared.globalParams.rerank = resolved.rerank.method;
+          prepared.globalParams.rrfParams = { k: resolved.rerank.k };
+          prepared.globalParams.weightedParams.weights =
+            prepared.searchParams.map(sp =>
+              sp === field
+                ? resolved.rerank.denseWeight
+                : sp === sparseField
+                  ? 1 - resolved.rerank.denseWeight
+                  : 0
+            );
+        }
+        if (
+          field.inputMode === 'vector' ||
+          (!field.inputMode && !field.field.is_function_output)
+        ) {
+          const validation = Validator[
+            field.field.data_type as keyof typeof Validator
+          ](field.data, field.field);
+          if (!validation.valid) throw new Error(validation.message);
+        }
+      }
+      const params = buildSearchParams(prepared);
       const res = await DataService.vectorSearchData(
         searchParams.collection.collection_name,
         params
       );
-
-      setTableLoading(false);
+      lastSearch.current = prepared;
       setSearchResult(res);
     } catch (err) {
+      const error = err as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      setSearchError(
+        error.response?.data?.message ||
+          error.message ||
+          embeddingTrans('searchFailed')
+      );
+    } finally {
+      searchInFlight.current = false;
       setTableLoading(false);
     }
   }, [JSON.stringify(searchParams)]);
@@ -233,7 +332,9 @@ const Search = (props: CollectionDataProps) => {
       setTableLoading(false);
 
       const s = cloneObj(searchParams);
-      const params = cloneObj(buildSearchParams(searchParams));
+      const params = cloneObj(
+        buildSearchParams(lastSearch.current || searchParams)
+      );
 
       try {
         const query = await CollectionService.queryData(collectionName, {
@@ -382,7 +483,7 @@ const Search = (props: CollectionDataProps) => {
   }
 
   // disable search button
-  let disableSearch = false;
+  let disableSearch = !!tableLoading;
   let disableSearchTooltip = '';
   // has selected vector fields
   const selectedFields = searchParams.searchParams.filter(s => s.selected);
@@ -392,7 +493,7 @@ const Search = (props: CollectionDataProps) => {
     disableSearchTooltip = searchTrans('noSelectedVectorField');
   }
   // has vector data to search
-  const noDataInSelected = selectedFields.some(s => s.data === '');
+  const noDataInSelected = selectedFields.some(s => !inputReady[s.anns_field]);
 
   if (noDataInSelected) {
     disableSearch = true;
@@ -404,12 +505,34 @@ const Search = (props: CollectionDataProps) => {
 
   return (
     <SearchRoot>
+      {searchError && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {searchError}
+        </Alert>
+      )}
       {collection && (
         <InputArea>
           <LeftSection>
             <AccordionsContainer>
               {searchParams.searchParams.map((s, index: number) => {
                 const field = s.field;
+                const sparseTargets = searchParams.searchParams
+                  .filter(
+                    sp =>
+                      !sp.selected &&
+                      sp.field.data_type ===
+                        DataTypeStringEnum.SparseFloatVector &&
+                      sp.field.index.metricType !== 'BM25'
+                  )
+                  .map(sp => sp.anns_field);
+                const dense = [
+                  DataTypeStringEnum.FloatVector,
+                  DataTypeStringEnum.Float16Vector,
+                  DataTypeStringEnum.BFloat16Vector,
+                ].includes(field.data_type as DataTypeStringEnum);
+                const sparse =
+                  field.data_type === DataTypeStringEnum.SparseFloatVector &&
+                  field.index.metricType !== 'BM25';
                 return (
                   <StyledAccordion
                     key={`${collection.collection_name}-${field.name}`}
@@ -451,11 +574,58 @@ const Search = (props: CollectionDataProps) => {
                       </CheckboxRow>
                     </AccordionSummary>
                     <StyledAccordionDetails>
-                      <VectorInputBox
-                        searchParams={s}
-                        onChange={onSearchInputChange}
-                        collection={collection}
-                        type={field.is_function_output ? 'text' : 'vector'}
+                      <SearchEmbeddingInput
+                        ref={input => {
+                          inputRefs.current[s.anns_field] = input;
+                        }}
+                        mode={
+                          s.inputMode ||
+                          (field.is_function_output ? 'builtin' : 'vector')
+                        }
+                        onModeChange={mode =>
+                          onInputModeChange(s.anns_field, mode)
+                        }
+                        input={s.data}
+                        onInputChange={value =>
+                          onSearchInputChange(s.anns_field, value)
+                        }
+                        dimension={
+                          field.dimension > 0 ? field.dimension : undefined
+                        }
+                        builtinAvailable={!!field.is_function_output}
+                        builtinModel={
+                          field.function?.params?.model_name ||
+                          field.function?.params?.model ||
+                          field.function?.name
+                        }
+                        externalAvailable={dense || sparse}
+                        outputTypes={
+                          sparse
+                            ? ['sparse']
+                            : dense &&
+                                sparseTargets.length &&
+                                selectedFields.length === 1
+                              ? ['dense', 'dense&sparse']
+                              : ['dense']
+                        }
+                        sparseTargets={sparseTargets}
+                        disabled={!!tableLoading}
+                        onReadyChange={ready =>
+                          setInputReady(current =>
+                            current[s.anns_field] === ready
+                              ? current
+                              : { ...current, [s.anns_field]: ready }
+                          )
+                        }
+                        vectorInput={
+                          <VectorInputBox
+                            key={`${field.name}-vector`}
+                            searchParams={s}
+                            onChange={onSearchInputChange}
+                            collection={collection}
+                            type="vector"
+                          />
+                        }
                       />
 
                       <SearchParams
@@ -501,7 +671,7 @@ const Search = (props: CollectionDataProps) => {
               <CustomButton
                 onClick={genRandomVectors}
                 size="small"
-                disabled={false}
+                disabled={!!tableLoading}
                 className="genBtn"
                 sx={{
                   mb: 1,

@@ -1,15 +1,24 @@
-import { isSparseVector, transformObjStrToJSONStr } from '@/utils';
+import { transformObjStrToJSONStr } from '@/utils';
 import { DataTypeStringEnum } from '@/consts';
 import type { FieldObject } from '@server/types';
+import {
+  isCombinedVector,
+  sparseToPairs,
+} from '@/components/embedding/vectors';
 
 const floatVectorValidator = (text: string, field: FieldObject) => {
   try {
-    const value = JSON.parse(text);
+    const parsed = JSON.parse(text);
+    const value = isCombinedVector(parsed) ? parsed.dense : parsed;
+    if (isCombinedVector(parsed)) sparseToPairs(parsed.sparse);
     const dim = field.dimension;
-    if (!Array.isArray(value)) {
+    if (
+      !Array.isArray(value) ||
+      value.some(v => typeof v !== 'number' || !Number.isFinite(v))
+    ) {
       return {
         valid: false,
-        message: `Not an array`,
+        message: `Expected an array of finite numbers`,
       };
     }
 
@@ -34,10 +43,13 @@ const binaryVectorValidator = (text: string, field: FieldObject) => {
   try {
     const value = JSON.parse(text);
     const dim = field.dimension;
-    if (!Array.isArray(value)) {
+    if (
+      !Array.isArray(value) ||
+      value.some(v => !Number.isInteger(v) || v < 0 || v > 255)
+    ) {
       return {
         valid: false,
-        message: `Not an array`,
+        message: `Expected an array of bytes (0-255)`,
       };
     }
 
@@ -61,15 +73,14 @@ const binaryVectorValidator = (text: string, field: FieldObject) => {
 };
 
 const sparseVectorValidator = (text: string, field: FieldObject) => {
-  if (!isSparseVector(text)) {
-    return {
-      valid: false,
-      value: undefined,
-      message: `Incorrect Sparse Vector format, it should be like {1: 0.1, 3: 0.2}`,
-    };
-  }
   try {
-    JSON.parse(transformObjStrToJSONStr(text));
+    let value: unknown;
+    try {
+      value = JSON.parse(text);
+    } catch {
+      value = JSON.parse(transformObjStrToJSONStr(text));
+    }
+    sparseToPairs(value);
     return {
       valid: true,
       message: ``,

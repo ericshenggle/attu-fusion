@@ -32,8 +32,6 @@ export type SearchInputBoxProps = {
   type?: 'vector' | 'text';
 };
 
-let queryTimeout: NodeJS.Timeout;
-
 export default function SearchInputBox(props: SearchInputBoxProps) {
   const theme = useTheme();
   const { t: searchTrans } = useTranslation('search');
@@ -49,6 +47,18 @@ export default function SearchInputBox(props: SearchInputBoxProps) {
   const dataRef = useRef(data);
   const fieldRef = useRef(field);
   const searchParamsRef = useRef(searchParams);
+  const queryTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const updateTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(
+    () => () => {
+      clearTimeout(queryTimeout.current);
+      clearTimeout(updateTimeout.current);
+      editor.current?.destroy();
+      editor.current = undefined;
+    },
+    []
+  );
 
   const themeCompartment = new Compartment();
 
@@ -64,8 +74,8 @@ export default function SearchInputBox(props: SearchInputBoxProps) {
   }, [JSON.stringify(searchParams), onChange]);
 
   const getVectorById = (text: string) => {
-    if (queryTimeout) {
-      clearTimeout(queryTimeout);
+    if (queryTimeout.current) {
+      clearTimeout(queryTimeout.current);
     }
     // only search for text that doesn't have space, comma, or brackets or curly brackets
     if (!text.trim().match(/[\s,{}]/)) {
@@ -76,7 +86,7 @@ export default function SearchInputBox(props: SearchInputBoxProps) {
         return;
       }
 
-      queryTimeout = setTimeout(() => {
+      queryTimeout.current = setTimeout(() => {
         try {
           CollectionService.queryData(collection.collection_name, {
             expr: isVarChar
@@ -85,7 +95,11 @@ export default function SearchInputBox(props: SearchInputBoxProps) {
             output_fields: [searchParamsRef.current.anns_field],
           })
             .then(res => {
-              if (res.data && res.data.length === 1) {
+              if (
+                editor.current?.state.doc.toString() === text &&
+                res.data &&
+                res.data.length === 1
+              ) {
                 onChangeRef.current(
                   searchParamsRef.current.anns_field,
                   JSON.stringify(
@@ -106,8 +120,6 @@ export default function SearchInputBox(props: SearchInputBoxProps) {
   useEffect(() => {
     if (!editor.current) {
       // update outside data timeout handler
-      let updateTimeout: NodeJS.Timeout;
-
       let extensions = [
         minimalSetup,
         placeholder(
@@ -135,20 +147,16 @@ export default function SearchInputBox(props: SearchInputBoxProps) {
         EditorView.lineWrapping,
         EditorView.updateListener.of(update => {
           if (update.docChanged) {
-            if (queryTimeout || updateTimeout) {
-              clearTimeout(queryTimeout);
-              clearTimeout(updateTimeout);
-            }
+            clearTimeout(queryTimeout.current);
+            clearTimeout(updateTimeout.current);
+            const text = update.state.doc.toString();
+            onChangeRef.current(searchParams.anns_field, text);
 
-            updateTimeout = setTimeout(() => {
+            updateTimeout.current = setTimeout(() => {
               // get text
-              const text = update.state.doc.toString();
               // validate text
               const { valid } = validator(text, fieldRef.current);
-              // if valid, update search params
-              if (valid || text === '' || type === 'text') {
-                onChangeRef.current(searchParams.anns_field, text);
-              } else {
+              if (!valid && text && type !== 'text') {
                 getVectorById(text);
               }
             }, 500);
