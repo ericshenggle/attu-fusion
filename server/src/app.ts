@@ -14,6 +14,7 @@ import { router as cronsRouter } from './crons';
 import { router as userRouter } from './users';
 import { router as playgroundRouter } from './playground';
 import { router as tcvectordbRouter } from './tcvectordb';
+import { router as embeddingRouter } from './embedding';
 import {
   TransformResMiddleware,
   LoggingMiddleware,
@@ -55,6 +56,7 @@ router.use('/crons', cronsRouter);
 router.use('/users', userRouter);
 router.use('/playground', playgroundRouter);
 router.use('/tcvectordb', tcvectordbRouter);
+router.use('/embedding', embeddingRouter);
 router.get('/healthy', (req, res, next) => {
   res.json({ status: 200 });
   next();

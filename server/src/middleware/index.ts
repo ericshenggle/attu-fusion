@@ -37,15 +37,28 @@ export const ReqHeaderMiddleware = (
     next();
     return;
   }
-  if (milvusClientId && getVectorDbProvider('tcvectordb').hasSession(milvusClientId)) {
-    next(HttpErrors(501, 'This operation is not available for Tencent VectorDB.'));
+  const isTencentSession =
+    milvusClientId &&
+    getVectorDbProvider('tcvectordb').hasSession(milvusClientId);
+  if (req.path.startsWith('/api/v1/embedding/')) {
+    if (
+      !milvusClientId ||
+      (!isTencentSession && !clientCache.get(milvusClientId))
+    ) {
+      next(HttpErrors(401, 'Can not find your connection, please reconnect.'));
+    } else {
+      next();
+    }
+    return;
+  }
+  if (isTencentSession) {
+    next(
+      HttpErrors(501, 'This operation is not available for Tencent VectorDB.')
+    );
     return;
   }
 
-  const bypassURLs = [
-    `/api/v1/milvus/connect`,
-    `/api/v1/milvus/version`,
-  ];
+  const bypassURLs = [`/api/v1/milvus/connect`, `/api/v1/milvus/version`];
 
   if (
     bypassURLs.indexOf(req.url) === -1 &&
