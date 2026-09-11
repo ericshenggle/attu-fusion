@@ -1,14 +1,23 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import axiosInstance from '@/http/Axios';
 import { rootContext, authContext, dataContext } from '@/context';
 import { HTTP_STATUS_CODE } from '@server/utils/Const';
+import { TencentVectorDbService } from '@/http/TencentVectorDb.service';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 let axiosResInterceptor: number | null = null;
 
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const TCVECTORDB_KEEPALIVE_MS = 10 * 60 * 1000;
+
 const GlobalEffect = ({ children }: { children: React.ReactNode }) => {
   const { openSnackBar } = useContext(rootContext);
-  const { logout } = useContext(authContext);
+  const { logout, authReq, isAuth } = useContext(authContext);
   const { database } = useContext(dataContext);
+  const navigate = useNavigate();
+  const { t: commonTrans } = useTranslation();
+  const idleLogoutStarted = useRef(false);
 
   useEffect(() => {
     // Add database header to all axios requests
@@ -97,6 +106,50 @@ const GlobalEffect = ({ children }: { children: React.ReactNode }) => {
       }
     };
   }, [logout, openSnackBar]);
+
+  useEffect(() => {
+    if (!isAuth) return;
+
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    const resetIdleTimer = () => {
+      if (idleLogoutStarted.current) return;
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(async () => {
+        if (idleLogoutStarted.current) return;
+        idleLogoutStarted.current = true;
+        await logout(false);
+        openSnackBar(commonTrans('attu.sessionExpired'), 'warning');
+        navigate('/connect', { replace: true });
+      }, IDLE_TIMEOUT_MS);
+    };
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'pointerdown',
+      'keydown',
+      'touchstart',
+      'scroll',
+    ];
+    activityEvents.forEach(event =>
+      window.addEventListener(event, resetIdleTimer, { passive: true })
+    );
+    document.addEventListener('visibilitychange', resetIdleTimer);
+    resetIdleTimer();
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      activityEvents.forEach(event =>
+        window.removeEventListener(event, resetIdleTimer)
+      );
+      document.removeEventListener('visibilitychange', resetIdleTimer);
+    };
+  }, [commonTrans, isAuth, logout, navigate, openSnackBar]);
+
+  useEffect(() => {
+    if (!isAuth || authReq.provider !== 'tcvectordb') return;
+    const keepalive = window.setInterval(() => {
+      void TencentVectorDbService.listDatabases().catch(() => {});
+    }, TCVECTORDB_KEEPALIVE_MS);
+    return () => window.clearInterval(keepalive);
+  }, [authReq.provider, isAuth]);
 
   return <>{children}</>;
 };

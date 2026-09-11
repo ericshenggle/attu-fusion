@@ -26,6 +26,7 @@ const commonTrans = {
     community: '社区',
     dockerWarning:
       'Attu 运行在容器内，“127.0.0.1”或“localhost”指向的是 Attu 容器自身。请使用 Attu 容器可以访问的 Milvus 服务器 IP 地址或主机名。',
+    sessionExpired: '由于长时间没有操作，会话已退出，请重新连接。',
   },
   status: {
     loaded: '已加载',
