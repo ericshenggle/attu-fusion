@@ -15,7 +15,7 @@ export const useNavigationHook = (
 ) => {
   const { t: navTrans } = useTranslation('nav');
   const { setNavInfo } = useContext(navContext);
-  const { collectionName = '', extra } = extraParam || {};
+  const { collectionName = '', extra, title } = extraParam || {};
 
   useEffect(() => {
     const route = routes.find(r => r.routerType === type);
@@ -27,12 +27,12 @@ export const useNavigationHook = (
     const navInfo: NavInfo = {
       backPath: navConfig.backPath || '',
       showDatabaseSelector: navConfig.showDatabaseSelector || false,
-      navTitle: navConfig.useCollectionNameAsTitle
+      navTitle: title || (navConfig.useCollectionNameAsTitle
         ? collectionName || navTrans(navConfig.navTitleKey || '')
-        : navTrans(navConfig.navTitleKey || ''),
+        : navTrans(navConfig.navTitleKey || '')),
       ...(collectionName ? { extra } : {}),
     };
 
     setNavInfo(navInfo);
-  }, [type, navTrans, setNavInfo, collectionName, extra]);
+  }, [type, navTrans, setNavInfo, collectionName, extra, title]);
 };

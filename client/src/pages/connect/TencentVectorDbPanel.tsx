@@ -20,7 +20,6 @@ export const TencentVectorDbPanel = () => {
   const [endpoint, setEndpoint] = useState(DEFAULT_ENDPOINT);
   const [account, setAccount] = useState('root');
   const [apiKey, setApiKey] = useState('');
-  const [database, setDatabaseName] = useState('default');
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +35,7 @@ export const TencentVectorDbPanel = () => {
         apiKey,
         token: apiKey,
         password: '',
-        database,
+        database: '',
         ssl: endpoint.startsWith('https://'),
         checkHealth: true,
         clientId: '',
@@ -102,20 +101,12 @@ export const TencentVectorDbPanel = () => {
           onChange={event => setApiKey(event.target.value)}
         />
       </Box>
-      <TextField
-        fullWidth
-        required
-        size="small"
-        label="Database"
-        value={database}
-        onChange={event => setDatabaseName(event.target.value)}
-      />
       <Button
         type="submit"
         variant="contained"
         size="small"
         sx={{ mt: 1.5 }}
-        disabled={isConnecting || !endpoint || !account || !apiKey || !database}
+        disabled={isConnecting || !endpoint || !account || !apiKey}
       >
         {isConnecting ? 'Connecting...' : 'Connect'}
       </Button>

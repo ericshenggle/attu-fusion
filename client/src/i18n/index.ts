@@ -36,9 +36,12 @@ import propertiesEn from './en/properties';
 import propertiesCn from './cn/properties';
 import actionEn from './en/action';
 import actionCn from './cn/action';
+import tcvectordbEn from './en/tcvectordb';
+import tcvectordbCn from './cn/tcvectordb';
 
 export const resources = {
   'zh-CN': {
+    tcvectordb: tcvectordbCn,
     translation: commonCn,
     btn: buttonCn,
     warning: warningCn,
@@ -58,6 +61,7 @@ export const resources = {
     action: actionCn,
   },
   en: {
+    tcvectordb: tcvectordbEn,
     translation: commonEn,
     btn: buttonEn,
     warning: warningEn,

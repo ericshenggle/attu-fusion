@@ -228,11 +228,17 @@ export const getMenuItems = (
   database: string,
   navTrans: (key: string) => string,
   navigate: (path: string) => void,
-  authReq?: { address: string }
+  authReq?: { address: string; provider?: string }
 ): NavMenuItem[] => {
   const menuItems = routes
     .filter(route => {
       if (!route.showInMenu) return false;
+      if (
+        authReq?.provider === 'tcvectordb' &&
+        route.path !== ROUTE_PATHS.HOME &&
+        route.path !== ROUTE_PATHS.DATABASES
+      )
+        return false;
       if (route.showWhenNotManagedOrDedicated && !(!isManaged || isDedicated))
         return false;
       if (route.showWhenNotManaged && isManaged) return false;
@@ -255,7 +261,7 @@ export const getMenuItems = (
     });
 
   // Add Milvus WebUI menu item for non-managed instances
-  if (!isManaged && authReq?.address) {
+  if (!isManaged && authReq?.address && authReq.provider !== 'tcvectordb') {
     menuItems.push({
       icon: icons.newWindow,
       label: 'Milvus WebUI',
@@ -273,9 +279,16 @@ export const getMenuItems = (
 
 export const getRoutes = (
   isManaged: boolean,
-  isDedicated: boolean
+  isDedicated: boolean,
+  provider?: string
 ): RouteItem[] => {
   return routes.filter(route => {
+    if (
+      provider === 'tcvectordb' &&
+      route.path !== ROUTE_PATHS.HOME &&
+      route.path !== ROUTE_PATHS.DATABASES
+    )
+      return false;
     if (route.showWhenNotManagedOrDedicated && !(!isManaged || isDedicated))
       return false;
     if (route.showWhenNotManaged && isManaged) return false;

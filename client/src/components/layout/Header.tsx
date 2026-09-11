@@ -34,6 +34,7 @@ const Header: FC = () => {
     useContext(rootContext);
 
   const { address, username } = authReq;
+  const isTencent = authReq.provider === 'tcvectordb';
   const navigate = useNavigate();
 
   // UI states
@@ -60,7 +61,7 @@ const Header: FC = () => {
   };
 
   const useDatabase = async (database: string) => {
-    await MilvusService.useDatabase({ database });
+    if (!isTencent) await MilvusService.useDatabase({ database });
   };
 
   const handleUserMenuClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -121,12 +122,19 @@ const Header: FC = () => {
         disableGutters
         sx={{
           minHeight: 45,
-          px: 2,
+          px: isTencent ? { xs: 1, sm: 2 } : 2,
           display: 'flex',
           justifyContent: 'space-between',
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1}
+          sx={
+            isTencent ? { minWidth: 0, flex: 1, overflow: 'hidden' } : undefined
+          }
+        >
           {navInfo.backPath !== '' && (
             <IconButton
               size="small"
@@ -137,7 +145,19 @@ const Header: FC = () => {
             </IconButton>
           )}
           {navInfo.showDatabaseSelector && (
-            <Breadcrumbs aria-label="breadcrumb">
+            <Breadcrumbs
+              aria-label="breadcrumb"
+              sx={
+                isTencent
+                  ? {
+                      flexShrink: 1,
+                      minWidth: 0,
+                      '& ol': { flexWrap: 'nowrap' },
+                      '& li': { minWidth: 0 },
+                    }
+                  : undefined
+              }
+            >
               <Box
                 sx={{
                   display: 'flex',
@@ -147,7 +167,20 @@ const Header: FC = () => {
                 }}
                 onClick={handleDbClick}
               >
-                <Typography sx={{ fontSize: 15, fontWeight: 500 }}>
+                <Typography
+                  sx={{
+                    fontSize: 15,
+                    fontWeight: 500,
+                    ...(isTencent
+                      ? {
+                          maxWidth: { xs: 150, sm: 250 },
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }
+                      : {}),
+                  }}
+                >
                   {database}
                 </Typography>
                 <icons.caretSort sx={{ fontSize: 16, ml: 0.5 }} />
@@ -180,7 +213,20 @@ const Header: FC = () => {
           )}
           <Typography
             color="text.primary"
-            sx={{ fontSize: 15, fontWeight: 500, ml: 0 }}
+            sx={{
+              fontSize: 15,
+              fontWeight: 500,
+              ml: 0,
+              ...(isTencent
+                ? {
+                    display: { xs: 'none', sm: 'block' },
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis',
+                  }
+                : {}),
+            }}
           >
             {navInfo.navTitle}
           </Typography>
@@ -195,7 +241,12 @@ const Header: FC = () => {
             </Box>
           )}
         </Stack>
-        <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1}
+          sx={{ flexShrink: 0 }}
+        >
           <IconButton
             onClick={toggleColorMode}
             color="inherit"
@@ -205,10 +256,27 @@ const Header: FC = () => {
             {mode === 'dark' ? <icons.night /> : <icons.day />}
           </IconButton>
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-            <Box sx={{ mr: 2 }}>
+            <Box
+              sx={{
+                mr: 2,
+                ...(isTencent
+                  ? { display: { xs: 'none', md: 'block' }, maxWidth: 320 }
+                  : {}),
+              }}
+            >
               <Typography
                 className="address"
-                sx={{ fontSize: 11, lineHeight: 1.3 }}
+                sx={{
+                  fontSize: 11,
+                  lineHeight: 1.3,
+                  ...(isTencent
+                    ? {
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }
+                    : {}),
+                }}
               >
                 {address}
               </Typography>
@@ -216,10 +284,10 @@ const Header: FC = () => {
                 className="status"
                 sx={{ fontSize: 11, lineHeight: 1.3, color: '#1ba954' }}
               >
-                {commonTrans('status.running')}
+                {isTencent ? 'Tencent VectorDB' : commonTrans('status.running')}
               </Typography>
             </Box>
-            {username && (
+            {username && !isTencent && (
               <>
                 <Tooltip title={username}>
                   <IconButton

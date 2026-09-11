@@ -67,27 +67,40 @@ export const AuthProvider = (props: { children: React.ReactNode }) => {
   useEffect(() => {
     window.localStorage.setItem(
       ATTU_AUTH_REQ,
-      JSON.stringify({ ...authReq, password: '', token: '' })
+      JSON.stringify({ ...authReq, password: '', token: '', apiKey: '' })
     );
     document.title = authReq.address ? `${authReq.address} - Attu` : 'Attu';
   }, [authReq]);
 
   // login API
   const login = async (params: AuthReq) => {
-    params.clientId = Math.random().toString(36).substring(7);
+    params.clientId =
+      params.provider === 'tcvectordb'
+        ? Array.from(crypto.getRandomValues(new Uint8Array(16)), byte =>
+            byte.toString(16).padStart(2, '0')
+          ).join('')
+        : Math.random().toString(36).substring(7);
     // only set clientId once
     window.localStorage.setItem(MILVUS_CLIENT_ID, params.clientId);
     try {
-      const res = params.provider === 'tcvectordb'
-        ? await TencentVectorDbService.connect({
-            endpoint: params.address,
-            account: params.username,
-            apiKey: params.apiKey || params.token,
-            database: params.database,
-            clientId: params.clientId,
-          })
-        : await MilvusService.connect(params);
-      setAuthReq({ ...params, provider: res.provider, database: res.database });
+      const res =
+        params.provider === 'tcvectordb'
+          ? await TencentVectorDbService.connect({
+              endpoint: params.address,
+              account: params.username,
+              apiKey: params.apiKey || params.token,
+              clientId: params.clientId,
+              ...(params.database?.trim()
+                ? { database: params.database.trim() }
+                : {}),
+            })
+          : await MilvusService.connect(params);
+      setAuthReq({
+        ...params,
+        provider: res.provider,
+        database: res.database,
+        ...(res.provider === 'tcvectordb' ? { apiKey: '', token: '' } : {}),
+      });
       setClientId(res.clientId);
       // update clientId in localStorage if changed
       if (res.clientId !== params.clientId) {
@@ -103,6 +116,9 @@ export const AuthProvider = (props: { children: React.ReactNode }) => {
 
   // logout API
   const logout = async (pass?: boolean) => {
+    if (!pass && authReq.provider === 'tcvectordb') {
+      await TencentVectorDbService.disconnect().catch(() => {});
+    }
     if (!pass && authReq.provider !== 'tcvectordb') {
       await MilvusService.closeConnection();
     }

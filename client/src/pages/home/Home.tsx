@@ -19,7 +19,11 @@ import StatusIcon, { LoadingType } from '@/components/status/StatusIcon';
 import CommunityLinks from '@/pages/home/CommunityLinks';
 
 const Home = () => {
-  useNavigationHook(ROUTE_PATHS.HOME);
+  const { authReq } = useContext(authContext);
+  const isTencent = authReq.provider === 'tcvectordb';
+  useNavigationHook(ROUTE_PATHS.HOME, {
+    title: isTencent ? 'Tencent VectorDB' : undefined,
+  });
   const {
     databases,
     database,
@@ -135,7 +139,7 @@ const Home = () => {
                 ({databases.length})
               </Typography>
             </Box>
-            <Button
+            {!isTencent && <Button
               variant="contained"
               color="primary"
               size="small"
@@ -152,7 +156,7 @@ const Home = () => {
               }}
             >
               <PlusIcon sx={{ fontSize: 20 }} />
-            </Button>
+            </Button>}
           </Box>
           {loadingDatabases ? (
             <StatusIcon type={LoadingType.CREATING} />
@@ -166,7 +170,7 @@ const Home = () => {
               }}
             >
               {databases.map(db => {
-                if (db.name === database) {
+                if (!isTencent && db.name === database) {
                   db.collections = collections.map(c => c.collection_name);
                 }
                 return (

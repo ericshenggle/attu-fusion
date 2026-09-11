@@ -2,7 +2,8 @@ import { useContext, useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNavigationHook } from '@/hooks';
 import DatabaseTree from '@/pages/databases/tree';
-import { dataContext } from '@/context';
+import { dataContext, authContext } from '@/context';
+import TencentDatabases from '@/pages/tcvectordb/TencentDatabases';
 import StatusIcon from '@/components/status/StatusIcon';
 import { ConsistencyLevelEnum, DYNAMIC_FIELD } from '@/consts';
 import { ROUTE_PATHS } from '@/config/routes';
@@ -79,7 +80,7 @@ const TabSection = styled(Box)(({ theme }) => ({
 }));
 
 // Databases page(tree and tabs)
-const Databases = () => {
+const MilvusDatabases = () => {
   // context
   const { database, collections, loading, ui, setUIPref } =
     useContext(dataContext);
@@ -373,4 +374,7 @@ const Databases = () => {
   );
 };
 
-export default Databases;
+export default function Databases() {
+  const { authReq } = useContext(authContext);
+  return authReq.provider === 'tcvectordb' ? <TencentDatabases /> : <MilvusDatabases />;
+}

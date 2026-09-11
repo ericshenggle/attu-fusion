@@ -60,6 +60,7 @@ function Index() {
           <Box
             sx={{
               flex: 1,
+              minWidth: 0,
               display: 'flex',
               flexDirection: 'column',
               height: '100vh',

@@ -186,10 +186,10 @@ export const AuthForm = () => {
         loginParams.password = '';
         loginParams.token = '';
       }
-      await login(loginParams);
+      const connection = await login(loginParams);
 
       // set database
-      setDatabase(authReq.database);
+      setDatabase(connection.database);
       // success message
       openSnackBar(successTrans('connect'));
 

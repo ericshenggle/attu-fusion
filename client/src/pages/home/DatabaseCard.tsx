@@ -26,7 +26,8 @@ const DatabaseCard: FC<DatabaseCardProps> = ({
   isActive = false,
 }) => {
   // context
-  const { isManaged, isServerless } = useContext(authContext);
+  const { isManaged, isServerless, authReq } = useContext(authContext);
+  const isTencent = authReq.provider === 'tcvectordb';
   const { setDialog, openSnackBar, handleCloseDialog } =
     useContext(rootContext);
 
@@ -44,7 +45,7 @@ const DatabaseCard: FC<DatabaseCardProps> = ({
   const ZillizIcon = icons.zilliz;
 
   const onClick = async () => {
-    await MilvusService.useDatabase({ database: database.name });
+    if (!isTencent) await MilvusService.useDatabase({ database: database.name });
     setDatabase(database.name);
     const targetPath = `/databases/${database.name}/collections`;
     navigate(targetPath);
@@ -127,7 +128,7 @@ const DatabaseCard: FC<DatabaseCardProps> = ({
                 color: theme.palette.primary.main,
               }}
             >
-              {database.collections.length}
+              {isTencent ? (database as DatabaseObject).collectionCount ?? '--' : database.collections.length}
             </Typography>
             {database.createdTime !== -1 && (
               <>
@@ -152,7 +153,7 @@ const DatabaseCard: FC<DatabaseCardProps> = ({
               </>
             )}
           </Box>
-          {database.name !== 'default' && !isServerless && (
+          {database.name !== 'default' && !isServerless && !isTencent && (
             <Tooltip
               title={`${btnTrans('drop')} ${dbTrans('database')}`}
               placement="top"
