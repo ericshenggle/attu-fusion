@@ -115,6 +115,7 @@ export type CronJobObject = {
 };
 
 export type DatabaseObject = {
+  collectionCount?: number;
   name: string;
   db_name: string;
   dbID: string | number;

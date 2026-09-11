@@ -5,6 +5,7 @@ import { MILVUS_CLIENT_ID, HTTP_STATUS_CODE, isElectron } from '../utils';
 import { HttpError } from 'http-errors';
 import HttpErrors from 'http-errors';
 import { clientCache } from '../app';
+import { getVectorDbProvider } from '../providers';
 
 declare global {
   namespace Express {
@@ -31,13 +32,19 @@ export const ReqHeaderMiddleware = (
     req.db_name = database;
   }
 
+  // Tencent routes validate their own sessions in the provider controller.
+  if (req.path.startsWith('/api/v1/tcvectordb/')) {
+    next();
+    return;
+  }
+  if (milvusClientId && getVectorDbProvider('tcvectordb').hasSession(milvusClientId)) {
+    next(HttpErrors(501, 'This operation is not available for Tencent VectorDB.'));
+    return;
+  }
+
   const bypassURLs = [
     `/api/v1/milvus/connect`,
     `/api/v1/milvus/version`,
-    `/api/v1/tcvectordb/connect`,
-    `/api/v1/tcvectordb/test`,
-    `/api/v1/tcvectordb/collections/list`,
-    `/api/v1/tcvectordb/collections/create`,
   ];
 
   if (
