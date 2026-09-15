@@ -1,5 +1,6 @@
 const navTrans = {
   overview: 'Milvus 主页',
+  tencentOverview: '腾讯云 VectorDB 主页',
   welcome: '欢迎来到 Milvus！',
   collection: 'Collection',
   console: '搜索控制台',

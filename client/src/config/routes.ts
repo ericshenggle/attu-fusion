@@ -247,7 +247,11 @@ export const getMenuItems = (
     .map(route => {
       const menuItem: NavMenuItem = {
         icon: route.menuConfig?.icon,
-        label: navTrans(route.menuConfig?.label || ''),
+        label: navTrans(
+          route.path === ROUTE_PATHS.HOME && authReq?.provider === 'tcvectordb'
+            ? 'tencentOverview'
+            : route.menuConfig?.label || ''
+        ),
         key: route.menuConfig?.key,
         onClick: () => {
           if (route.path === ROUTE_PATHS.DATABASES) {
