@@ -110,6 +110,42 @@ docker run -p 8000:3000 -e MILVUS_URL=localhost:19530 zilliz/attu:v2.5
 
 3. Open your browser and navigate to `http://localhost:8000`
 
+This repository also includes Tencent Cloud VectorDB support. The normal Docker image starts the web UI and API server; choose **Tencent VectorDB** on the connection page and enter the VectorDB endpoint, account, and API key. The browser connects to Tencent VectorDB through the Attu server, so the server's network must be able to reach the endpoint.
+
+### Start this repository locally
+
+Requirements: Node.js 20 or later, npm, and (for Milvus local testing) Docker. Install the two workspaces once:
+
+```bash
+npm run install:all
+```
+
+Start the API and web UI in two terminals:
+
+```bash
+# terminal 1
+npm run start:server
+
+# terminal 2
+npm run start:client
+```
+
+Open `http://localhost:3001`. The Vite development server proxies `/api` and WebSocket requests to `http://localhost:3000`. On Windows, `powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1` starts both processes and stops the API when the UI is closed. On macOS/Linux, use `./scripts/start-dev.sh`.
+
+To expose the development UI to other machines on the same network, use `powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -ClientHost 0.0.0.0` or set `ATTU_CLIENT_HOST=0.0.0.0` before running the shell script. The API still listens on port 3000.
+
+Build the complete local production layout with `yarn build:all`, then copy `client/build` to `server/build` and run `yarn --cwd server start:prod`. The Dockerfile performs this layout automatically.
+
+### Alibaba Cloud Bailian embeddings
+
+External text and vector generation currently use Alibaba Cloud Bailian. The API key is entered in the page and kept only for the current editor session. The backend calls the default Beijing endpoint. For a workspace endpoint, set `DASHSCOPE_BASE_URL` before starting the server, for example:
+
+```bash
+DASHSCOPE_BASE_URL=https://YOUR_WORKSPACE_ID.cn-beijing.maas.aliyuncs.com/api/v1 npm run start:server
+```
+
+The API key's IP allowlist must include the public egress IP of the machine or container running the Attu backend. A `403 AccessDenied` response with `IP access denied by API-Key restriction` indicates this allowlist needs updating. Dense, sparse, and combined output are available when the selected Bailian model supports them.
+
 ## Installation Guides
 
 Before you begin, make sure that you have Milvus installed on either [Zilliz Cloud](https://cloud.zilliz.com/signup) or [your own server](https://milvus.io/docs/install_standalone-docker.md).

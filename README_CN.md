@@ -110,6 +110,42 @@ docker run -p 8000:3000 -e MILVUS_URL=localhost:19530 zilliz/attu:v2.5
 
 3. 打开浏览器并访问 `http://localhost:8000`
 
+本仓库已支持腾讯云 VectorDB。在连接页面选择“腾讯 VectorDB”，填写 endpoint、账号和 API Key 即可。浏览器通过 Attu 后端访问腾讯云，因此运行 Attu 后端的机器必须能够访问 VectorDB 地址。
+
+### 本地启动本仓库
+
+环境要求：Node.js 20 或更高版本、npm；如果需要本地测试 Milvus，还需要 Docker。首次安装两个工作区的依赖：
+
+```bash
+npm run install:all
+```
+
+分别在两个终端启动后端和前端：
+
+```bash
+# 终端 1
+npm run start:server
+
+# 终端 2
+npm run start:client
+```
+
+打开 `http://localhost:3001`。Vite 会将 `/api` 和 WebSocket 请求代理到 `http://localhost:3000`。Windows 可以执行 `powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1` 一次启动两个进程；关闭前端后脚本会停止后端。macOS/Linux 使用 `./scripts/start-dev.sh`。
+
+如果需要让同一网络中的其他机器访问开发页面，Windows 执行 `powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -ClientHost 0.0.0.0`；macOS/Linux 执行 `ATTU_CLIENT_HOST=0.0.0.0 ./scripts/start-dev.sh`。后端默认监听 3000 端口。
+
+执行 `yarn build:all` 可以构建前端和后端。生产方式运行前，将 `client/build` 复制为 `server/build`，然后执行 `yarn --cwd server start:prod`。Dockerfile 已经自动完成这一步。
+
+### 阿里云百炼向量生成
+
+外部文本和向量生成目前使用阿里云百炼。API Key 只在当前编辑器会话中使用，不会保存到浏览器或数据库。后端默认请求北京地域接口；如果使用业务空间地址，启动后端前设置 `DASHSCOPE_BASE_URL`：
+
+```bash
+DASHSCOPE_BASE_URL=https://YOUR_WORKSPACE_ID.cn-beijing.maas.aliyuncs.com/api/v1 npm run start:server
+```
+
+API Key 的 IP 白名单必须包含运行 Attu 后端的机器或容器的公网出口 IP。若看到 `403 AccessDenied` 和 `IP access denied by API-Key restriction`，请先更新百炼白名单。模型支持时，页面可生成 Dense、Sparse 和 Dense + Sparse 三种结果。
+
 ## 安装指南
 
 在开始之前，请确保您已在 [Zilliz Cloud](https://cloud.zilliz.com/signup) 或 [您自己的服务器](https://milvus.io/docs/install_standalone-docker.md) 上安装了 Milvus。
