@@ -6,6 +6,7 @@ import { HttpError } from 'http-errors';
 import HttpErrors from 'http-errors';
 import { clientCache } from '../app';
 import { getVectorDbProvider } from '../providers';
+import { EmbeddingProviderError } from '../embedding/errors';
 
 declare global {
   namespace Express {
@@ -124,9 +125,11 @@ export const ErrorMiddleware = (
   }
 
   if (err) {
-    res
-      .status(statusCode)
-      .json({ message: `${err.details || err.message}`, statusCode });
+    res.status(statusCode).json({
+      message: `${err.details || err.message}`,
+      statusCode,
+      ...(err instanceof EmbeddingProviderError ? { error: err.info } : {}),
+    });
   }
   next();
 };

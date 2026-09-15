@@ -24,6 +24,8 @@ import type {
   EmbeddingOutputType,
 } from '@server/embedding/types';
 import VectorPreview from './VectorPreview';
+import type { TFunction } from 'i18next';
+import type { EmbeddingFailure } from '@server/embedding/errors';
 
 export type EmbeddingEditorHandle = {
   generate: () => Promise<EmbeddingResult>;
@@ -43,12 +45,17 @@ const defaultOutputTypes: EmbeddingOutputType[] = [
   'sparse',
   'dense&sparse',
 ];
-const errorMessage = (error: unknown) => {
+const errorMessage = (error: unknown, t: TFunction<'embedding'>) => {
   const e = error as {
-    response?: { data?: { message?: string } };
+    response?: { data?: { message?: string; error?: EmbeddingFailure } };
     message?: string;
   };
-  return e.response?.data?.message || e.message || 'Embedding request failed.';
+  const failure = e.response?.data?.error;
+  const detail =
+    e.response?.data?.message || e.message || 'Embedding request failed.';
+  return failure?.provider === 'dashscope' && failure.reason
+    ? `${t(`errors.${failure.reason}`)} ${detail}`
+    : detail;
 };
 
 const EmbeddingEditor = forwardRef<EmbeddingEditorHandle, Props>(
@@ -143,7 +150,7 @@ const EmbeddingEditor = forwardRef<EmbeddingEditorHandle, Props>(
           );
         })
         .catch(e => {
-          if (!controller.signal.aborted) setLoadError(errorMessage(e));
+          if (!controller.signal.aborted) setLoadError(errorMessage(e, t));
         })
         .finally(() => {
           if (!controller.signal.aborted) setLoading(false);
@@ -223,7 +230,7 @@ const EmbeddingEditor = forwardRef<EmbeddingEditorHandle, Props>(
         resultCallback.current?.(generated);
         return generated;
       } catch (e) {
-        if (!controller.signal.aborted) setError(errorMessage(e));
+        if (!controller.signal.aborted) setError(errorMessage(e, t));
         throw e;
       } finally {
         if (!controller.signal.aborted) setBusy(false);

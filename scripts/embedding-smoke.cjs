@@ -24,7 +24,11 @@ async function main() {
     let data = {};
     if (endpoint.endsWith('/embedding/providers')) data = embeddingProviders.map(p => p.info);
     else if (endpoint.endsWith('/embedding/generate')) {
-      if (failEmbedding) return route.fulfill({ status: 502, json: { message: 'Embedding test failure', statusCode: 502 } });
+      if (failEmbedding) return route.fulfill({ status: 502, json: {
+        message: 'Alibaba Cloud Bailian (HTTP 401 / InvalidApiKey): Invalid API-key provided. Request ID: test-request-401',
+        statusCode: 502,
+        error: { provider: 'dashscope', reason: 'authentication', code: 'InvalidApiKey', upstreamStatus: 401, requestId: 'test-request-401' },
+      } });
       data = { provider: 'dashscope', model: body.model, elapsedMs: 12, outputType: body.outputType,
         ...(body.outputType !== 'sparse' ? { vector, dimension: 64 } : {}),
         ...(body.outputType !== 'dense' ? { sparseVector } : {}) };
@@ -140,7 +144,10 @@ async function main() {
     failEmbedding = true;
     await external();
     await page.getByRole('button', { name: 'Search', exact: true }).click();
-    await page.getByText('Embedding test failure', { exact: true }).first().waitFor();
+    const providerError = page.getByRole('alert').filter({ hasText: 'Bailian rejected the API key.' });
+    await providerError.waitFor();
+    assert.match(await providerError.innerText(), /InvalidApiKey/);
+    assert.match(await providerError.innerText(), /test-request-401/);
     assert.equal(requests.some(r => r.endpoint.includes('/documents/')), false);
     assert.deepEqual(errors, []);
     console.log('Embedding browser checks passed: dense, sparse, hybrid RRF/weighted, built-in text, vector tool, dimension blocking, failures, and mobile dialog.');

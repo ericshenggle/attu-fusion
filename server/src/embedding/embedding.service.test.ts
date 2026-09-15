@@ -80,17 +80,19 @@ describe('Bailian embedding', () => {
     }
   );
 
-  it.each([
-    [],
-    [{ index: -1, value: 1 }],
-    [{ index: 1.5, value: 1 }],
-    [{ index: 4294967295, value: 1 }],
-    [{ index: 1, value: NaN }],
+  it.each(
     [
-      { index: 1, value: 1 },
-      { index: 1, value: 2 },
-    ],
-  ].map(sparse => ({ sparse })))('rejects malformed sparse output', async ({ sparse }) => {
+      [],
+      [{ index: -1, value: 1 }],
+      [{ index: 1.5, value: 1 }],
+      [{ index: 4294967295, value: 1 }],
+      [{ index: 1, value: NaN }],
+      [
+        { index: 1, value: 1 },
+        { index: 1, value: 2 },
+      ],
+    ].map(sparse => ({ sparse }))
+  )('rejects malformed sparse output', async ({ sparse }) => {
     http.mockResolvedValueOnce({
       data: {
         output: { embeddings: [{ text_index: 0, sparse_embedding: sparse }] },
@@ -224,8 +226,102 @@ describe('Bailian embedding', () => {
     http.mockRejectedValueOnce(new Error(`${input.apiKey} ${input.input}`));
     await expect(service.generate(input)).rejects.toMatchObject({
       statusCode: 502,
-      message:
-        'Embedding generation failed. Check the provider and credentials.',
+      message: 'Alibaba Cloud Bailian: Embedding request failed.',
+    });
+  });
+
+  it.each([
+    [401, 'InvalidApiKey', 'authentication'],
+    [403, 'AccessDenied', 'permission'],
+    [400, 'InvalidParameter', 'request'],
+    [400, 'InvalidParameter.Instruct', 'request'],
+    [400, 'Arrearage', 'quota'],
+    [429, 'Throttling', 'rateLimit'],
+    [404, 'ModelNotFound', 'model'],
+    [503, 'ServiceUnavailable', 'upstream'],
+  ])(
+    'preserves safe Bailian error details for HTTP %s / %s',
+    async (status, code, reason) => {
+      http.mockRejectedValueOnce({
+        response: {
+          status,
+          data: {
+            code,
+            message: 'Provider explanation',
+            request_id: 'request-123',
+          },
+        },
+      });
+      await expect(service.generate(input)).rejects.toMatchObject({
+        statusCode: 502,
+        info: {
+          provider: 'dashscope',
+          upstreamStatus: status,
+          code,
+          reason,
+          requestId: 'request-123',
+        },
+        message: `Alibaba Cloud Bailian (HTTP ${status} / ${code}): Provider explanation Request ID: request-123`,
+      });
+    }
+  );
+
+  it.each([
+    ['ECONNABORTED', 'timeout'],
+    ['ENOTFOUND', 'network'],
+    ['ECONNRESET', 'network'],
+  ])('classifies %s without leaking Axios config', async (code, reason) => {
+    http.mockRejectedValueOnce({
+      code,
+      message: input.apiKey,
+      config: { headers: { Authorization: input.apiKey }, data: input.input },
+    });
+    await expect(service.generate(input)).rejects.toMatchObject({
+      statusCode: 502,
+      info: { code, reason },
+    });
+  });
+
+  it('redacts secrets and input echoed in the provider response, code and request ID', async () => {
+    http.mockRejectedValueOnce({
+      response: {
+        status: 401,
+        data: {
+          code: input.apiKey,
+          message: `Invalid ${input.apiKey} Bearer other-secret sk-another-secret ${input.input}`,
+          request_id: input.apiKey,
+        },
+      },
+    });
+    try {
+      await service.generate(input);
+      throw new Error('Expected failure');
+    } catch (error) {
+      const serialized = JSON.stringify(error);
+      expect(serialized).not.toContain(input.apiKey);
+      expect(serialized).not.toContain(input.input);
+      expect((error as Error).message).not.toContain(input.apiKey);
+      expect((error as Error).message).not.toContain('other-secret');
+      expect((error as Error).message).not.toContain('sk-another-secret');
+    }
+  });
+
+  it('preserves errors returned with HTTP 200', async () => {
+    http.mockResolvedValueOnce({
+      status: 200,
+      data: {
+        code: 'InvalidApiKey',
+        message: 'Key is not valid',
+        request_id: 'request-200',
+      },
+    });
+    await expect(service.generate(input)).rejects.toMatchObject({
+      statusCode: 502,
+      info: {
+        reason: 'authentication',
+        code: 'InvalidApiKey',
+        requestId: 'request-200',
+      },
     });
   });
 });

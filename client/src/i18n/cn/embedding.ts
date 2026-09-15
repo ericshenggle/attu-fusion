@@ -1,4 +1,18 @@
 const embedding = {
+  errors: {
+    authentication:
+      '百炼 API Key 验证失败，请检查密钥是否有效，以及是否属于当前接口所在地域或业务空间。',
+    permission: '百炼拒绝访问，请检查业务空间和模型调用权限。',
+    quota: '百炼账户余额或额度不足，请检查账户状态。',
+    rateLimit: '百炼请求频率超限，请稍后重试。',
+    model: '当前百炼接口无法访问此模型，请检查模型名称和地域。',
+    request: '百炼不接受当前请求，请根据下面的原因调整文本、维度或输出类型。',
+    timeout: '百炼请求超时，请稍后重试或检查后端网络。',
+    network: '后端连接百炼失败，请检查网络、代理和证书。',
+    response: '百炼返回的数据格式不符合预期。',
+    configuration: '百炼接口地址配置不正确。',
+    upstream: '百炼请求失败，具体原因如下。',
+  },
   outputType: '向量输出类型',
   dense: 'Dense 稠密',
   sparse: 'Sparse 稀疏',

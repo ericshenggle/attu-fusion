@@ -1,4 +1,21 @@
 const embedding = {
+  errors: {
+    authentication:
+      'Bailian rejected the API key. Check that it is valid for the endpoint region and workspace.',
+    permission: 'Bailian denied access. Check workspace and model permissions.',
+    quota: 'Check your Bailian account balance and quota.',
+    rateLimit: 'Bailian rate limit reached. Try again later.',
+    model:
+      'This Bailian endpoint cannot access the selected model. Check the model name and region.',
+    request:
+      'Bailian rejected the request. Adjust the text, dimension or output type using the details below.',
+    timeout: 'Bailian timed out. Retry or check the backend network.',
+    network:
+      'The backend could not connect to Bailian. Check network, proxy and certificates.',
+    response: 'Bailian returned an unexpected response format.',
+    configuration: 'The Bailian endpoint configuration is invalid.',
+    upstream: 'Bailian request failed. Details follow.',
+  },
   outputType: 'Embedding output',
   dense: 'Dense',
   sparse: 'Sparse',

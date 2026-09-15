@@ -1,4 +1,5 @@
 import HttpErrors from 'http-errors';
+import { EmbeddingProviderError } from './errors';
 import type {
   EmbeddingProvider,
   EmbeddingRequest,
@@ -72,7 +73,8 @@ export class EmbeddingService {
         input: request.input,
         apiKey: request.apiKey?.trim(),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof EmbeddingProviderError) throw error;
       // Provider errors can contain credentials, request bodies or response headers.
       throw HttpErrors(
         502,
