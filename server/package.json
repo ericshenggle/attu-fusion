@@ -1,16 +1,9 @@
 {
-  "name": "attu",
-  "version": "2.5.12",
-  "license": "MIT",
-  "author": {
-    "name": "zilliz",
-    "email": "zilliz@zilliz.com"
-  },
-  "description": "Attu helps to manage Milvus easily",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/zilliztech/attu"
-  },
+  "name": "attu-fusion-server",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": "Attu Fusion contributors",
+  "description": "Attu Fusion backend adapters and provider services",
   "dependencies": {
     "@json2csv/plainjs": "^7.0.3",
     "@zilliz/milvus2-sdk-node": "2.5.9",
@@ -105,7 +98,7 @@
   "homepage": "./",
   "main": "electron-starter.js",
   "build": {
-    "appId": "milvus",
+    "appId": "attu-fusion",
     "directories": {
       "output": "electron-app"
     },

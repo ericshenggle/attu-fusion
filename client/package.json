@@ -1,9 +1,8 @@
 {
-  "name": "attu-client",
-  "version": "2.0.0",
-  "description": "Attu UI Client",
+  "name": "attu-fusion-client",
+  "version": "0.1.0",
+  "description": "Attu Fusion web client",
   "license": "Apache-2.0",
-  "bugs": "https://github.com/zilliztech/attu/issues",
   "private": false,
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.4",

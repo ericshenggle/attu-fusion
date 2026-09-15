@@ -1,9 +1,8 @@
 {
-  "name": "attu",
+  "name": "attu-fusion",
   "version": "0.1.0",
-  "description": "Attu",
+  "description": "A multi-backend, multi-provider vector database visual workspace",
   "license": "Apache-2.0",
-  "bugs": "https://github.com/zilliztech/attu/issues",
   "release": {
     "branches": [
       "main",
