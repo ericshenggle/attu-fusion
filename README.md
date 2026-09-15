@@ -1,25 +1,48 @@
-# Attu
+# Attu Fusion
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/zilliztech/attu)
-![License](https://img.shields.io/github/license/zilliztech/attu)
-[![downloads](https://img.shields.io/docker/pulls/zilliz/attu)](https://hub.docker.com/r/zilliz/attu/tags)
-![GitHub last commit](https://img.shields.io/github/last-commit/zilliztech/attu)
-![GitHub stars](https://img.shields.io/github/stars/zilliztech/attu)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 [![中文](https://img.shields.io/badge/README-中文-blue.svg)](./README_CN.md)
-[![Contributors](https://img.shields.io/github/contributors/zilliztech/attu)](https://github.com/zilliztech/attu/graphs/contributors)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/zilliztech/attu/pulls)
 
-Attu is designed to manage and interact with Milvus, offering features such as:
+Attu Fusion is an unofficial community-maintained derivative of [Attu 2.5.12](https://github.com/zilliztech/attu). It provides one visual workspace for multiple vector database backends and external embedding providers. It is not affiliated with or endorsed by Zilliz.
+
+The project keeps the original Attu capabilities for Milvus and adds a provider boundary for Tencent Cloud VectorDB and other backend adapters. External text can be converted with Alibaba Cloud Bailian into dense, sparse, or combined embeddings before search.
+
+## Project identity and attribution
+
+- Upstream project: [zilliztech/attu](https://github.com/zilliztech/attu), version 2.5.12.
+- Project name: **Attu Fusion**; suggested repository name: **`attu-fusion`**.
+- This repository is a derivative work. The upstream copyright and license notices are preserved in [LICENSE](./LICENSE), and the project-specific attribution is in [NOTICE.md](./NOTICE.md).
+- “Attu”, “Milvus”, “Tencent Cloud VectorDB”, and “Alibaba Cloud Bailian” are names or trademarks of their respective owners. This project is an independent community project.
+- Changes are documented in commits and in the feature documentation. New contributions are licensed under the repository license unless a file states otherwise.
+
+## Features
 
 - **Database, Collection, and Partition Management:** Efficiently organize and manage your Milvus setup.
 - **Insertion, Indexing, and Querying of Vector Embeddings:** Easily handle Milvus vector data operations.
 - **Performing Vector Search:** Rapidly validate your results using the vector search feature.
 - **User and Role Management:** Easily manage Milvus permissions and security.
 - **Viewing System Topology:** Visualize Milvus system architecture for better management and optimization.
+- **Multiple backend providers:** Use Milvus and Tencent Cloud VectorDB through one connection experience.
+- **Extensible embedding providers:** Generate dense, sparse, or dense + sparse vectors with provider-specific models and dimensions.
+- **Provider-aware search:** Use built-in text, external text embedding, or raw vectors, with backend-specific hybrid search.
+
+## Architecture
+
+The web client talks to an API server through provider-neutral routes. Backend
+adapters implement the same collection, document, index, and search workflows;
+embedding providers implement model discovery and vector generation. This keeps
+database-specific request formats inside the adapter and lets the UI expose the
+same three input modes: built-in text, external text, and raw vectors.
+
+The current implementation includes Milvus, Tencent Cloud VectorDB, and
+Alibaba Cloud Bailian. See [embedding documentation](./doc/embedding.md) and
+[Tencent VectorDB notes](./doc/TCVECTORDB.md) for provider details.
 
 ## Table of Contents
 
 - [Features](#features)
+- [Architecture](#architecture)
+- [Project identity and attribution](#project-identity-and-attribution)
 - [System Requirements](#system-requirements)
 - [Quick Start](#quick-start)
 - [Installation Guides](#installation-guides)
@@ -35,6 +58,7 @@ Attu is designed to manage and interact with Milvus, offering features such as:
 - [Useful Examples](#useful-examples)
 - [Milvus Links](#milvus-links)
 - [Community](#community)
+- [Security](./SECURITY.md)
 
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px;">
   <div style="flex: 1; min-width: 300px;">
@@ -134,7 +158,16 @@ Open `http://localhost:3001`. The Vite development server proxies `/api` and Web
 
 To expose the development UI to other machines on the same network, use `powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -ClientHost 0.0.0.0` or set `ATTU_CLIENT_HOST=0.0.0.0` before running the shell script. The API still listens on port 3000.
 
-Build the complete local production layout with `yarn build:all`, then copy `client/build` to `server/build` and run `yarn --cwd server start:prod`. The Dockerfile performs this layout automatically.
+Build the complete local production layout with `npm run build:all`, then copy `client/build` to `server/build` and run `npm --prefix server run start:prod`. The Dockerfile performs this layout automatically.
+
+Build and run the local image:
+
+```bash
+docker build -t attu-fusion:dev .
+docker run --rm -p 8000:3000 \
+  -e DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/api/v1 \
+  attu-fusion:dev
+```
 
 ### Alibaba Cloud Bailian embeddings
 
@@ -329,7 +362,7 @@ Here are some helpful resources to get you started with Milvus:
 
 ## License
 
-Attu is licensed under the [Apache License 2.0](LICENSE). See the LICENSE file for details.
+Attu Fusion is distributed under the [Apache License 2.0](LICENSE). See [NOTICE.md](./NOTICE.md) for upstream attribution.
 
 ## Changelog
 

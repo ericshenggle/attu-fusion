@@ -1,19 +1,25 @@
-# Attu
+# Attu Fusion
 
-Attu 是一个全方位的 Milvus 管理工具。
-
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/zilliztech/attu)
-![License](https://img.shields.io/github/license/zilliztech/attu)
-[![downloads](https://img.shields.io/docker/pulls/zilliz/attu)](https://hub.docker.com/r/zilliz/attu/tags)
-![GitHub last commit](https://img.shields.io/github/last-commit/zilliztech/attu)
-![GitHub stars](https://img.shields.io/github/stars/zilliztech/attu)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 [![中文](https://img.shields.io/badge/README-中文-blue.svg)](./README_CN.md)
-[![Contributors](https://img.shields.io/github/contributors/zilliztech/attu)](https://github.com/zilliztech/attu/graphs/contributors)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/zilliztech/attu/pulls)
+
+Attu Fusion 是基于 [Attu 2.5.12](https://github.com/zilliztech/attu) 的非官方社区二次开发项目，提供一个支持多个向量数据库后端和可扩展 embedding Provider 的可视化工作台。本项目与 Zilliz 没有关联，也不代表 Zilliz 的官方立场。
+
+项目保留 Attu 原有的 Milvus 管理能力，并增加后端 Provider 抽象，目前支持 Milvus 和腾讯云 VectorDB；外部文本可以通过阿里云百炼生成 Dense、Sparse 或 Dense + Sparse 向量后进行检索。
+
+## 项目身份与归属声明
+
+- 上游项目：[zilliztech/attu](https://github.com/zilliztech/attu)，版本 2.5.12。
+- 项目名称：**Attu Fusion**；建议仓库名：**`attu-fusion`**。
+- 本仓库是二次开发衍生作品，保留上游版权和许可证，详见 [LICENSE](./LICENSE)；项目归属说明见 [NOTICE.md](./NOTICE.md)。
+- “Attu”“Milvus”“Tencent Cloud VectorDB”“Alibaba Cloud Bailian”分别属于其权利人使用的名称或商标，本项目是独立社区项目。
+- 新增代码和文档默认遵循本仓库许可证，除非文件另有说明。
 
 ## 目录
 
 - [功能特性](#功能特性)
+- [架构说明](#架构说明)
+- [项目身份与归属声明](#项目身份与归属声明)
 - [系统要求](#系统要求)
 - [快速开始](#快速开始)
 - [安装指南](#安装指南)
@@ -29,6 +35,7 @@ Attu 是一个全方位的 Milvus 管理工具。
 - [使用示例](#使用示例)
 - [Milvus 相关链接](#milvus-相关链接)
 - [社区](#社区)
+- [安全策略](./SECURITY.md)
 
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px;">
   <div style="flex: 1; min-width: 300px;">
@@ -78,13 +85,24 @@ Attu 是一个全方位的 Milvus 管理工具。
 </div>
 <br />
 
-Attu 是一个通过用户友好的图形界面管理和操作 Milvus 的系统，提供以下功能：
+## 功能特性
+
+Attu Fusion 是一个通过用户友好的图形界面管理和操作向量数据库的系统，提供以下功能：
 
 - **数据库、集合和分区管理：** 只需点击几下鼠标即可高效地组织和管理您的数据库、集合和分区，帮助用户快速构建和导航 Milvus 设置。
 - **向量的插入、索引和查询：** 通过简单的图形界面无缝插入、索引和查询向量，使用户能够高效地处理向量数据。
 - **执行向量搜索：** 只需点击几下鼠标即可进行高性能的向量搜索，快速找到相似项，帮助用户迅速进行功能验证。
 - **用户和角色管理：** 管理用户和角色，以确保安全和受控的访问权限，使用户能够快速管理权限和安全设置。
 - **查看系统拓扑：** 可视化系统架构以实现更好的监督和管理，使用户能够迅速了解和优化他们的系统设置。
+- **多后端：** 在同一个连接入口中使用 Milvus 和腾讯云 VectorDB。
+- **多向量 Provider：** 根据 Provider、模型和维度生成 Dense、Sparse 或 Dense + Sparse 向量。
+- **Provider 感知检索：** 支持内置文本、外部文本 embedding 和纯向量输入，并适配后端混合检索。
+
+## 架构说明
+
+前端通过 Provider 无关的接口访问 API 服务。后端适配器实现集合、文档、索引和检索流程，embedding Provider 实现模型发现和向量生成；数据库差异被封装在适配器内部，页面可以统一提供内置文本、外部文本和纯向量三种输入方式。
+
+当前实现包含 Milvus、腾讯云 VectorDB 和阿里云百炼。详见 [embedding 文档](./doc/embedding.md) 和 [腾讯云 VectorDB 说明](./doc/TCVECTORDB.md)。
 
 ## 系统要求
 
@@ -134,7 +152,16 @@ npm run start:client
 
 如果需要让同一网络中的其他机器访问开发页面，Windows 执行 `powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1 -ClientHost 0.0.0.0`；macOS/Linux 执行 `ATTU_CLIENT_HOST=0.0.0.0 ./scripts/start-dev.sh`。后端默认监听 3000 端口。
 
-执行 `yarn build:all` 可以构建前端和后端。生产方式运行前，将 `client/build` 复制为 `server/build`，然后执行 `yarn --cwd server start:prod`。Dockerfile 已经自动完成这一步。
+执行 `npm run build:all` 可以构建前端和后端。生产方式运行前，将 `client/build` 复制为 `server/build`，然后执行 `npm --prefix server run start:prod`。Dockerfile 已经自动完成这一步。
+
+构建并运行本地镜像：
+
+```bash
+docker build -t attu-fusion:dev .
+docker run --rm -p 8000:3000 \
+  -e DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/api/v1 \
+  attu-fusion:dev
+```
 
 ### 阿里云百炼向量生成
 
@@ -323,7 +350,7 @@ yarn test
 
 ## 许可证
 
-Attu 采用 [Apache License 2.0](LICENSE) 许可证。详情请参阅 LICENSE 文件。
+Attu Fusion 采用 [Apache License 2.0](LICENSE) 许可证。上游归属信息请参阅 [NOTICE.md](./NOTICE.md)。
 
 ## 更新日志
 
