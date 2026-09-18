@@ -11,7 +11,7 @@
     ]
   },
   "scripts": {
-    "install:all": "npm --prefix client install && npm --prefix server install",
+    "install:all": "npm --prefix client ci && npm --prefix server ci",
     "build:all": "npm --prefix client run build && npm --prefix server run build",
     "start:server": "npm --prefix server run build && npm --prefix server run start:prod",
     "start:client": "npm --prefix client run start",
