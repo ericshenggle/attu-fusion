@@ -86,8 +86,8 @@ describe('Tencent VectorDB business workflow', () => {
       ...create.indexes,
       {
         fieldName: 'sparse_vector',
-        fieldType: 'sparse_vector',
-        indexType: 'SPARSE_INVERTED_INDEX',
+        fieldType: 'sparseVector',
+        indexType: 'inverted',
         metricType: 'IP',
       },
     ];
@@ -195,8 +195,8 @@ describe('Tencent VectorDB business workflow', () => {
         ...create.indexes,
         {
           fieldName: 'sparse_vector',
-          fieldType: 'sparse_vector',
-          indexType: 'SPARSE_INVERTED_INDEX',
+          fieldType: 'sparseVector',
+          indexType: 'inverted',
           metricType: 'COSINE',
         },
       ],

@@ -62,12 +62,12 @@ export const validateCollectionIndexes = (
     }
     if (fieldName === 'sparse_vector') {
       if (
-        fieldType !== 'sparse_vector' ||
-        indexType !== 'SPARSE_INVERTED_INDEX' ||
+        fieldType !== 'sparseVector' ||
+        indexType !== 'inverted' ||
         index.metricType !== 'IP'
       ) {
         fail(
-          'sparse_vector must use a sparse_vector SPARSE_INVERTED_INDEX with IP metric.'
+          'sparse_vector must use the sparseVector inverted index with IP metric.'
         );
       }
       return {

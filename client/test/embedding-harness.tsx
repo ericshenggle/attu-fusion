@@ -142,8 +142,8 @@ export function mount(
                   ? [
                       {
                         fieldName: 'sparse_vector',
-                        fieldType: 'sparse_vector',
-                        indexType: 'SPARSE_INVERTED_INDEX',
+                        fieldType: 'sparseVector',
+                        indexType: 'inverted',
                       },
                     ]
                   : []),

@@ -93,8 +93,8 @@ export default function CreateCollectionDialog({
         ? [
             {
               fieldName: 'sparse_vector',
-              fieldType: 'sparse_vector',
-              indexType: 'SPARSE_INVERTED_INDEX',
+              fieldType: 'sparseVector',
+              indexType: 'inverted',
               metricType: 'IP',
             },
           ]
@@ -248,7 +248,7 @@ export default function CreateCollectionDialog({
               />
               {includeSparseIndex && (
                 <Typography variant="body2" color="text.secondary">
-                  sparse_vector: sparse_vector / SPARSE_INVERTED_INDEX / IP
+                  sparse_vector: sparseVector / inverted / IP
                 </Typography>
               )}
             </Box>

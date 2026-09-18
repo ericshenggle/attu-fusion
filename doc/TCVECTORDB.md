@@ -12,7 +12,8 @@ Implemented:
 - Describe a collection, inspect native field/index types and full metadata.
 - Create collections with configurable shard/replica counts, dense-vector
   dimension, HNSW or FLAT, COSINE/L2/IP, scalar filter indexes, and an
-  optional `sparse_vector` `SPARSE_INVERTED_INDEX` (IP) for hybrid search.
+  optional `sparse_vector` `sparseVector`/`inverted` (IP) index for hybrid
+  search.
 - Drop a collection after confirming its name.
 - Query documents by ID or filter, scan with offset pagination, choose returned
   fields and vectors, and use strong or eventual read consistency.

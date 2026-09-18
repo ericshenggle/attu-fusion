@@ -72,7 +72,7 @@ export default function CollectionDocuments({
     collection: collection.collection,
   };
   const vectorIndexes = (collection.indexes || []).filter(i =>
-    ['vector', 'binary_vector', 'sparse_vector'].includes(i.fieldType || '')
+    ['vector', 'binary_vector', 'sparseVector'].includes(i.fieldType || '')
   );
   useEffect(() => {
     alive.current = true;
