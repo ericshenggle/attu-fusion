@@ -112,7 +112,7 @@ const EnhancedTable: FC<TableType> = props => {
           {!headEditable ? (
             <EnhancedTableHead
               colDefinitions={finalColDefinitions}
-              numSelected={selected.length}
+              numSelected={rows.filter(row => isSelected(row)).length}
               order={order}
               orderBy={orderBy}
               onSelectAllClick={onSelectedAll}

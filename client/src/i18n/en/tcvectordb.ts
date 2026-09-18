@@ -10,6 +10,7 @@ export default {
   dimension: 'Dimension',
   metric: 'Metric',
   indexType: 'Index type',
+  sparseVectorIndex: 'Add sparse vector index',
   filterIndexes: 'Filter indexes',
   addField: 'Add field',
   removeField: 'Remove field',
@@ -63,6 +64,8 @@ export default {
   documentMissing: 'The document no longer exists.',
   deleteDocuments: 'Delete documents',
   exportResults: 'Export results',
+  exportSelected: 'Export selected ({{count}})',
+  exportAll: 'Export all matches',
   countMatches: 'Count matches',
   matchedCount: 'Matched documents: {{count}}',
   deleteDocumentsWarning:
@@ -87,7 +90,8 @@ export default {
   deleteAlias: 'Delete alias',
   rebuildIndex: 'Rebuild index',
   dropScalarIndexes: 'Drop scalar indexes',
-  dropIndexWarning: 'Permanently delete {{count}} scalar indexes from this collection?',
+  dropIndexWarning:
+    'Permanently delete {{count}} scalar indexes from this collection?',
   visibleColumns: 'Visible columns',
   queryHelp: 'Filter examples',
   searchHelp: 'Search examples',

@@ -29,6 +29,7 @@ const btnTrans = {
   rename: 'Rename',
   duplicate: 'Duplicate',
   export: 'Export',
+  exportAll: 'Export All',
   empty: 'Empty',
   flush: 'Flush',
   compact: 'Compact',
@@ -55,6 +56,7 @@ const btnTrans = {
   importFileTooltip: 'Import data from JSON or CSV file',
   importSampleDataTooltip: 'Insert sample data into this collection',
   exportTooltip: 'Export selected data to CSV file',
+  exportAllTooltip: 'Export all matching data, including vector fields, to CSV',
   copyJsonTooltip: 'Copy selected data in JSON format',
   emptyTooltip: 'Remove all data from this collection',
   deleteTooltip: 'Delete selected data',
@@ -68,7 +70,8 @@ const btnTrans = {
   downloadDisabledTooltip: 'Please select data to export',
   deleteDisableTooltip: 'Please select at least one item to delete',
   editEntityDisabledTooltip: 'You can only edit one entity at a time',
-  editEntityDisabledTooltipAutoId: 'Auto-generated ID entities cannot be edited',
+  editEntityDisabledTooltipAutoId:
+    'Auto-generated ID entities cannot be edited',
 };
 
 export default btnTrans;

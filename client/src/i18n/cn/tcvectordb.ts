@@ -10,6 +10,7 @@ export default {
   dimension: '\u5411\u91cf\u7ef4\u5ea6',
   metric: '\u8ddd\u79bb\u5ea6\u91cf',
   indexType: '\u7d22\u5f15\u7c7b\u578b',
+  sparseVectorIndex: '\u6dfb\u52a0\u7a00\u758f\u5411\u91cf\u7d22\u5f15',
   filterIndexes: '\u6807\u91cf\u8fc7\u6ee4\u7d22\u5f15',
   addField: '\u6dfb\u52a0\u5b57\u6bb5',
   removeField: '\u5220\u9664\u5b57\u6bb5',
@@ -64,6 +65,8 @@ export default {
   documentMissing: '\u8be5\u6587\u6863\u5df2\u4e0d\u5b58\u5728\u3002',
   deleteDocuments: '\u5220\u9664\u6587\u6863',
   exportResults: '\u5bfc\u51fa\u7ed3\u679c',
+  exportSelected: '\u5bfc\u51fa\u9009\u4e2d ({{count}})',
+  exportAll: '\u5bfc\u51fa\u5168\u90e8\u5339\u914d\u6570\u636e',
   countMatches: '\u7edf\u8ba1\u5339\u914d\u6570',
   matchedCount: '\u5339\u914d\u6587\u6863\u6570\uff1a{{count}}',
   deleteDocumentsWarning:
@@ -89,7 +92,8 @@ export default {
   deleteAlias: '\u5220\u9664\u522b\u540d',
   rebuildIndex: '\u91cd\u5efa\u7d22\u5f15',
   dropScalarIndexes: '\u5220\u9664\u6807\u91cf\u7d22\u5f15',
-  dropIndexWarning: '\u5c06\u4ece\u5f53\u524d\u96c6\u5408\u6c38\u4e45\u5220\u9664 {{count}} \u4e2a\u6807\u91cf\u7d22\u5f15\uff1f',
+  dropIndexWarning:
+    '\u5c06\u4ece\u5f53\u524d\u96c6\u5408\u6c38\u4e45\u5220\u9664 {{count}} \u4e2a\u6807\u91cf\u7d22\u5f15\uff1f',
   visibleColumns: '\u663e\u793a\u5217',
   queryHelp: '\u8fc7\u6ee4\u793a\u4f8b',
   searchHelp: '\u68c0\u7d22\u793a\u4f8b',

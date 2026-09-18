@@ -106,11 +106,20 @@ const AttuGrid: FC<AttuGridType> = props => {
 
   const _onSelectedAll = (event: React.ChangeEvent) => {
     if ((event.target as HTMLInputElement).checked) {
-      const newSelecteds = rows;
-      setSelected(newSelecteds);
+      // `selected` can contain rows from earlier pages.  Keep those rows when
+      // the user selects an entire page so a single export/delete operation can
+      // span pagination boundaries.
+      const selectedByKey = new Map(
+        selected.map((row: any) => [String(row[primaryKey]), row])
+      );
+      rows.forEach(row => selectedByKey.set(String(row[primaryKey]), row));
+      setSelected(Array.from(selectedByKey.values()));
       return;
     }
-    setSelected([]);
+    const pageKeys = new Set(rows.map(row => String(row[primaryKey])));
+    setSelected(
+      selected.filter((row: any) => !pageKeys.has(String(row[primaryKey])))
+    );
   };
 
   const defaultLabelRows = ({ from = 0, to = 0, count = 0 }) => {

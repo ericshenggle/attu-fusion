@@ -21,13 +21,16 @@ import {
 import icons from '@/components/icons/Icons';
 import type { ProviderDocument } from '@server/providers/types';
 
-export function downloadDocuments(documents: ProviderDocument[]) {
+export function downloadDocuments(
+  documents: ProviderDocument[],
+  filename = 'documents.json'
+) {
   const url = URL.createObjectURL(
     new Blob([JSON.stringify(documents, null, 2)], { type: 'application/json' })
   );
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'documents.json';
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -65,6 +68,9 @@ export default function DocumentTable({
     });
   }, [fields]);
   const displayedFields = fields.filter(field => visibleFields.includes(field));
+  const selectedOnPage = documents.filter(document =>
+    selected?.includes(document.id)
+  );
   const toggleField = (field: string) => {
     if (field === 'id') return;
     setVisibleFields(current =>
@@ -130,7 +136,10 @@ export default function DocumentTable({
           size="small"
           stickyHeader
           aria-label={t('documentResults')}
-          sx={{ minWidth: Math.max(560, displayedFields.length * 200 + 120), tableLayout: 'fixed' }}
+          sx={{
+            minWidth: Math.max(560, displayedFields.length * 200 + 120),
+            tableLayout: 'fixed',
+          }}
         >
           <TableHead>
             <TableRow>
@@ -141,14 +150,25 @@ export default function DocumentTable({
                     inputProps={{ 'aria-label': t('selectAll') }}
                     checked={
                       documents.length > 0 &&
-                      selected?.length === documents.length
+                      selectedOnPage.length === documents.length
                     }
                     indeterminate={
-                      !!selected?.length && selected.length < documents.length
+                      selectedOnPage.length > 0 &&
+                      selectedOnPage.length < documents.length
                     }
-                    onChange={(_, checked) =>
-                      onSelect(checked ? documents.map(d => d.id) : [])
-                    }
+                    onChange={(_, checked) => {
+                      const pageIds = new Set(documents.map(d => d.id));
+                      onSelect(
+                        checked
+                          ? Array.from(
+                              new Set([
+                                ...(selected || []),
+                                ...documents.map(d => d.id),
+                              ])
+                            )
+                          : (selected || []).filter(id => !pageIds.has(id))
+                      );
+                    }}
                   />
                 </TableCell>
               )}

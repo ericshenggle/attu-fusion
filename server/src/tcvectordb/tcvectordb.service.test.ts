@@ -81,6 +81,22 @@ describe('Tencent VectorDB business workflow', () => {
     expect(config.data).not.toHaveProperty('apiKey');
   });
 
+  it('accepts and forwards the sparse index used by hybrid collections', async () => {
+    const indexes = [
+      ...create.indexes,
+      {
+        fieldName: 'sparse_vector',
+        fieldType: 'sparse_vector',
+        indexType: 'SPARSE_INVERTED_INDEX',
+        metricType: 'IP',
+      },
+    ];
+    await service.createCollection({ ...create, indexes });
+    expect(
+      (request.mock.calls[1][0].data as { indexes: unknown }).indexes
+    ).toEqual(indexes);
+  });
+
   it('lists only Base databases and preserves server collection counts', async () => {
     request.mockResolvedValueOnce(databaseResponse);
     expect(await service.listDatabases(connection.clientId)).toEqual([
@@ -171,6 +187,18 @@ describe('Tencent VectorDB business workflow', () => {
       [
         ...create.indexes,
         { fieldName: 'extra', fieldType: 'bool', indexType: 'filter' },
+      ],
+    ],
+    [
+      'invalid sparse index',
+      [
+        ...create.indexes,
+        {
+          fieldName: 'sparse_vector',
+          fieldType: 'sparse_vector',
+          indexType: 'SPARSE_INVERTED_INDEX',
+          metricType: 'COSINE',
+        },
       ],
     ],
   ])('rejects %s without sending a mutation', async (_, indexes) => {

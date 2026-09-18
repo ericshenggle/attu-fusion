@@ -2,12 +2,18 @@ import { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dataContext } from '@/context';
 import { useQuery } from '@/hooks';
+import { CollectionService } from '@/http';
+import { saveCsvAs } from '@/utils';
 import icons from '@/components/icons/Icons';
 import AttuGrid from '@/components/grid/Grid';
 import CustomToolBar from '@/components/grid/ToolBar';
 import { getLabelDisplayedRows } from '@/pages/search/Utils';
 import { Root } from '../../StyledComponents';
-import { DYNAMIC_FIELD, ConsistencyLevelEnum } from '@/consts';
+import {
+  DYNAMIC_FIELD,
+  ConsistencyLevelEnum,
+  DataTypeStringEnum,
+} from '@/consts';
 import { Typography } from '@mui/material';
 import StatusIcon, { LoadingType } from '@/components/status/StatusIcon';
 import CollectionColHeader from '../CollectionColHeader';
@@ -35,6 +41,7 @@ const CollectionData = (props: CollectionDataProps) => {
   // UI state
   const [tableLoading, setTableLoading] = useState<boolean>(false);
   const [selectedData, setSelectedData] = useState<any[]>([]);
+  const [exporting, setExporting] = useState(false);
   const exprInputRef = useRef<string>(queryState.expr);
   const [, forceUpdate] = useState({});
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -173,6 +180,105 @@ const CollectionData = (props: CollectionDataProps) => {
     query(0, { ...queryState, consistencyLevel: ConsistencyLevelEnum.Strong });
   }, [count, query, reset]);
 
+  const exportFields = useCallback(
+    () =>
+      collection.schema.fields
+        .filter(field => !field.is_function_output)
+        .map(field => field.name),
+    [collection.schema.fields]
+  );
+
+  const primaryKeyValue = useCallback(
+    (value: unknown) =>
+      collection.schema.primaryField.data_type === DataTypeStringEnum.VarChar
+        ? JSON.stringify(String(value))
+        : String(value),
+    [collection.schema.primaryField.data_type]
+  );
+
+  const fetchExportRows = useCallback(
+    async (expression: string) => {
+      const response = await CollectionService.queryData(
+        collection.collection_name,
+        {
+          expr: expression,
+          output_fields: exportFields(),
+          limit: 1000,
+          consistency_level: queryState.consistencyLevel,
+        }
+      );
+      return response.data || [];
+    },
+    [collection.collection_name, exportFields, queryState.consistencyLevel]
+  );
+
+  const onExportSelected = useCallback(async () => {
+    if (!selectedData.length || exporting) return;
+    setExporting(true);
+    try {
+      const primaryKey = collection.schema.primaryField.name;
+      const data: any[] = [];
+      for (let index = 0; index < selectedData.length; index += 1000) {
+        const ids = selectedData
+          .slice(index, index + 1000)
+          .map(row => primaryKeyValue(row[primaryKey]));
+        data.push(
+          ...(await fetchExportRows(`${primaryKey} in [${ids.join(',')}]`))
+        );
+      }
+      saveCsvAs(data, `${collection.collection_name}.selected.csv`);
+    } finally {
+      setExporting(false);
+    }
+  }, [
+    collection.collection_name,
+    collection.schema.primaryField.name,
+    exporting,
+    fetchExportRows,
+    primaryKeyValue,
+    selectedData,
+  ]);
+
+  const onExportAll = useCallback(async () => {
+    if (!total || exporting) return;
+    setExporting(true);
+    try {
+      const primaryKey = collection.schema.primaryField.name;
+      const rows: any[] = [];
+      let lastPrimaryKey: unknown;
+      const maxPages = Math.ceil(total / 1000) + 1;
+      for (let page = 0; page < maxPages; page += 1) {
+        const afterLastRow =
+          lastPrimaryKey === undefined
+            ? ''
+            : `${primaryKey} > ${primaryKeyValue(lastPrimaryKey)}`;
+        const expression = [queryState.expr, afterLastRow]
+          .filter(Boolean)
+          .map(item => `(${item})`)
+          .join(' && ');
+        const batch = await fetchExportRows(expression);
+        if (!batch.length) break;
+        rows.push(...batch);
+        const nextPrimaryKey = batch[batch.length - 1][primaryKey];
+        if (nextPrimaryKey === undefined || nextPrimaryKey === lastPrimaryKey)
+          throw new Error('Unable to advance the export cursor.');
+        lastPrimaryKey = nextPrimaryKey;
+        if (batch.length < 1000) break;
+      }
+      saveCsvAs(rows, `${collection.collection_name}.all.csv`);
+    } finally {
+      setExporting(false);
+    }
+  }, [
+    collection.collection_name,
+    collection.schema.primaryField.name,
+    exporting,
+    fetchExportRows,
+    primaryKeyValue,
+    queryState.expr,
+    total,
+  ]);
+
   const onInsert = useCallback(
     async (collectionName: string) => {
       await fetchCollection(collectionName);
@@ -213,6 +319,9 @@ const CollectionData = (props: CollectionDataProps) => {
     onInsert,
     getEditData,
     setSelectedData,
+    onExportSelected,
+    onExportAll,
+    exporting,
   });
 
   useEffect(() => {

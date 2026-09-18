@@ -56,6 +56,8 @@ export default function CollectionDocuments({
   const [counting, setCounting] = useState(false);
   const [countError, setCountError] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [editor, setEditor] = useState<{ document?: ProviderDocument }>();
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -64,6 +66,7 @@ export default function CollectionDocuments({
   const [revision, setRevision] = useState(0);
   const alive = useRef(true);
   const requestVersion = useRef(0);
+  const selectionScope = useRef('');
   const target = {
     database: collection.database,
     collection: collection.collection,
@@ -85,7 +88,18 @@ export default function CollectionDocuments({
     setError('');
     setCount(undefined);
     setCountError('');
-    setSelected([]);
+    // Keep selected IDs while moving between pages. Changing the collection or
+    // the logical result set starts a fresh selection instead.
+    const nextSelectionScope = JSON.stringify({
+      database: collection.database,
+      collection: collection.collection,
+      filter: query.filter || '',
+      documentIds: query.documentIds || [],
+    });
+    if (selectionScope.current !== nextSelectionScope) {
+      selectionScope.current = nextSelectionScope;
+      setSelected([]);
+    }
     setRows([]);
     TencentVectorDbService.queryDocuments({ ...target, ...query })
       .then(res => {
@@ -161,6 +175,79 @@ export default function CollectionDocuments({
       if (alive.current) setDeleting(false);
     }
   };
+
+  const fetchDocumentsByIds = async (documentIds: string[]) => {
+    const documents: ProviderDocument[] = [];
+    for (let index = 0; index < documentIds.length; index += 20) {
+      const ids = documentIds.slice(index, index + 20);
+      const response = await TencentVectorDbService.queryDocuments({
+        ...target,
+        documentIds: ids,
+        retrieveVector: true,
+        readConsistency: query.readConsistency,
+        offset: 0,
+        limit: ids.length,
+      });
+      documents.push(...response.documents);
+    }
+    return documents;
+  };
+
+  const exportSelected = async () => {
+    if (!selected.length || exporting) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      downloadDocuments(
+        await fetchDocumentsByIds(selected),
+        `${collection.collection}.selected.json`
+      );
+    } catch (e) {
+      if (alive.current) setExportError(requestError(e));
+    } finally {
+      if (alive.current) setExporting(false);
+    }
+  };
+
+  const exportAll = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      // An explicit ID query has a bounded result set. Retrieve it by ID so the
+      // downloaded JSON always contains vectors, even when the table hides them.
+      if (query.documentIds?.length) {
+        downloadDocuments(
+          await fetchDocumentsByIds(query.documentIds),
+          `${collection.collection}.all.json`
+        );
+        return;
+      }
+      const { count: total } = await TencentVectorDbService.countDocuments({
+        ...target,
+        filter: query.filter,
+      });
+      const documents: ProviderDocument[] = [];
+      const limit = 100;
+      for (let offset = 0; offset < total; offset += limit) {
+        const response = await TencentVectorDbService.queryDocuments({
+          ...target,
+          filter: query.filter,
+          retrieveVector: true,
+          readConsistency: query.readConsistency,
+          offset,
+          limit,
+        });
+        documents.push(...response.documents);
+        if (response.documents.length < limit) break;
+      }
+      downloadDocuments(documents, `${collection.collection}.all.json`);
+    } catch (e) {
+      if (alive.current) setExportError(requestError(e));
+    } finally {
+      if (alive.current) setExporting(false);
+    }
+  };
   return (
     <Stack spacing={2}>
       <Box
@@ -214,7 +301,7 @@ export default function CollectionDocuments({
             </Button>
             <Button
               startIcon={<icons.upload />}
-              disabled={busy || editing}
+              disabled={busy || editing || exporting}
               onClick={() => setEditor({})}
             >
               {t('upsert')}
@@ -224,7 +311,7 @@ export default function CollectionDocuments({
                 <IconButton
                   aria-label={t('deleteDocuments')}
                   color="error"
-                  disabled={!selected.length || busy}
+                  disabled={!selected.length || busy || exporting}
                   onClick={() => {
                     setDeleteError('');
                     setDeleteOpen(true);
@@ -234,19 +321,24 @@ export default function CollectionDocuments({
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title={t('exportResults')}>
-              <span>
-                <IconButton
-                  aria-label={t('exportResults')}
-                  disabled={!rows.length || busy}
-                  onClick={() => downloadDocuments(rows)}
-                >
-                  <icons.download />
-                </IconButton>
-              </span>
-            </Tooltip>
             <Button
-              disabled={busy || counting || !!query.documentIds?.length}
+              startIcon={<icons.download />}
+              disabled={!selected.length || busy || exporting}
+              onClick={() => void exportSelected()}
+            >
+              {t('exportSelected', { count: selected.length })}
+            </Button>
+            <Button
+              startIcon={<icons.download />}
+              disabled={busy || exporting}
+              onClick={() => void exportAll()}
+            >
+              {t('exportAll')}
+            </Button>
+            <Button
+              disabled={
+                busy || counting || exporting || !!query.documentIds?.length
+              }
               onClick={() => void countMatches()}
             >
               {t('countMatches')}
@@ -256,7 +348,9 @@ export default function CollectionDocuments({
                 {t('matchedCount', { count })}
               </Typography>
             )}
-            {(busy || counting || editing) && <CircularProgress size={18} />}
+            {(busy || counting || editing || exporting) && (
+              <CircularProgress size={18} />
+            )}
           </Box>
         </Stack>
       </Box>
@@ -284,12 +378,17 @@ export default function CollectionDocuments({
           {countError}
         </Alert>
       )}
+      {exportError && (
+        <Alert severity="error" sx={{ color: 'text.primary' }}>
+          {exportError}
+        </Alert>
+      )}
       <DocumentTable
         documents={rows}
         selected={selected}
         onSelect={setSelected}
         onEdit={id => void edit(id)}
-        busy={busy || editing}
+        busy={busy || editing || exporting}
       />
       <TablePagination
         component="div"
@@ -316,9 +415,11 @@ export default function CollectionDocuments({
         onRowsPerPageChange={e =>
           setQuery(q => ({ ...q, limit: Number(e.target.value), offset: 0 }))
         }
-        backIconButtonProps={{ disabled: busy || query.offset === 0 }}
+        backIconButtonProps={{
+          disabled: busy || exporting || query.offset === 0,
+        }}
         nextIconButtonProps={{
-          disabled: busy || !!error || rows.length < query.limit,
+          disabled: busy || exporting || !!error || rows.length < query.limit,
         }}
       />
       {editor && (

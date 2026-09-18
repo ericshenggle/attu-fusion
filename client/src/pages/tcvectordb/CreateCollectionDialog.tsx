@@ -4,10 +4,12 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Stack,
@@ -46,6 +48,7 @@ export default function CreateCollectionDialog({
   const [metric, setMetric] = useState('COSINE');
   const [m, setM] = useState(16);
   const [ef, setEf] = useState(200);
+  const [includeSparseIndex, setIncludeSparseIndex] = useState(false);
   const [fields, setFields] = useState<
     Array<{ key: string; name: string; type: string }>
   >([]);
@@ -65,7 +68,8 @@ export default function CreateCollectionDialog({
     (indexType !== 'HNSW' ||
       (validNumber(m, 4, 64) && validNumber(ef, 8, 512))) &&
     fields.every(
-      f => validName(f.name) && !['id', 'vector'].includes(f.name)
+      f =>
+        validName(f.name) && !['id', 'vector', 'sparse_vector'].includes(f.name)
     ) &&
     new Set(fieldNames).size === fields.length;
 
@@ -85,6 +89,16 @@ export default function CreateCollectionDialog({
           ? { params: { M: m, efConstruction: ef } }
           : {}),
       },
+      ...(includeSparseIndex
+        ? [
+            {
+              fieldName: 'sparse_vector',
+              fieldType: 'sparse_vector',
+              indexType: 'SPARSE_INVERTED_INDEX',
+              metricType: 'IP',
+            },
+          ]
+        : []),
       ...fields.map(f => ({
         fieldName: f.name,
         fieldType: f.type,
@@ -220,6 +234,24 @@ export default function CreateCollectionDialog({
                 {numberInput('efConstruction', ef, setEf, 8, 512)}
               </Box>
             )}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={includeSparseIndex}
+                    onChange={event =>
+                      setIncludeSparseIndex(event.target.checked)
+                    }
+                  />
+                }
+                label={t('sparseVectorIndex')}
+              />
+              {includeSparseIndex && (
+                <Typography variant="body2" color="text.secondary">
+                  sparse_vector: sparse_vector / SPARSE_INVERTED_INDEX / IP
+                </Typography>
+              )}
+            </Box>
             <Box
               sx={{
                 display: 'flex',

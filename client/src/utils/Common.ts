@@ -87,7 +87,23 @@ export const saveCsvAs = (csvObj: any, as: string) => {
   try {
     const opts = {};
     const parser = new Parser(opts);
-    const csv = parser.parse(csvObj);
+    // CSV import parses JSON-looking values back to arrays/objects.  Serialize
+    // vectors (and other structured fields) explicitly so an export can be
+    // imported without losing its original shape.
+    const rows = Array.isArray(csvObj)
+      ? csvObj.map(row =>
+          Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [
+              key,
+              Array.isArray(value) ||
+              (typeof value === 'object' && value !== null)
+                ? JSON.stringify(value)
+                : value,
+            ])
+          )
+        )
+      : csvObj;
+    const csv = parser.parse(rows);
     const csvData = new Blob([csv], {
       type: 'text/csv;charset=utf-8',
     });

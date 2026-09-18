@@ -60,6 +60,23 @@ export const validateCollectionIndexes = (
       }
       return vector;
     }
+    if (fieldName === 'sparse_vector') {
+      if (
+        fieldType !== 'sparse_vector' ||
+        indexType !== 'SPARSE_INVERTED_INDEX' ||
+        index.metricType !== 'IP'
+      ) {
+        fail(
+          'sparse_vector must use a sparse_vector SPARSE_INVERTED_INDEX with IP metric.'
+        );
+      }
+      return {
+        fieldName,
+        fieldType,
+        indexType,
+        metricType: 'IP',
+      };
+    }
     if (
       indexType !== 'filter' ||
       !['string', 'uint64', 'int64', 'double', 'array', 'json'].includes(

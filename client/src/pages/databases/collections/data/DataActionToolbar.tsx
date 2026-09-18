@@ -9,7 +9,6 @@ import EditJSONDialog from '@/pages/dialogs/EditJSONDialog';
 import EmptyDataDialog from '@/pages/dialogs/EmptyDataDialog';
 import ImportSampleDialog from '@/pages/dialogs/ImportSampleDialog';
 import DataListView from '@/components/DataListView/DataListView';
-import { saveCsvAs } from '@/utils';
 import { DataTypeStringEnum, ConsistencyLevelEnum } from '@/consts';
 import type { QueryState } from '../../types';
 import { CollectionFullObject } from '@server/types';
@@ -24,6 +23,9 @@ interface DataActionToolbarProps {
   onInsert: (collectionName: string) => Promise<void>;
   getEditData: (data: any, collection: CollectionFullObject) => any;
   setSelectedData: (data: any[]) => void;
+  onExportSelected: () => Promise<void>;
+  onExportAll: () => Promise<void>;
+  exporting: boolean;
 }
 
 const DataActionToolbar = (props: DataActionToolbarProps) => {
@@ -37,6 +39,9 @@ const DataActionToolbar = (props: DataActionToolbarProps) => {
     onInsert,
     getEditData,
     setSelectedData,
+    onExportSelected,
+    onExportAll,
+    exporting,
   } = props;
 
   // UI functions
@@ -209,14 +214,21 @@ const DataActionToolbar = (props: DataActionToolbarProps) => {
       {
         type: 'button',
         btnVariant: 'text',
-        onClick: () => {
-          saveCsvAs(selectedData, `${collection.collection_name}.query.csv`);
-        },
+        onClick: () => void onExportSelected(),
         label: btnTrans('export'),
         icon: 'download',
         tooltip: btnTrans('exportTooltip'),
         disabledTooltip: btnTrans('downloadDisabledTooltip'),
-        disabled: () => !selectedData?.length,
+        disabled: () => !selectedData?.length || exporting,
+      },
+      {
+        type: 'button',
+        btnVariant: 'text',
+        onClick: () => void onExportAll(),
+        label: btnTrans('exportAll'),
+        icon: 'download',
+        tooltip: btnTrans('exportAllTooltip'),
+        disabled: () => total === 0 || exporting,
       },
       {
         type: 'button',
@@ -301,6 +313,9 @@ const DataActionToolbar = (props: DataActionToolbarProps) => {
       onDelete,
       getEditData,
       setSelectedData,
+      onExportSelected,
+      onExportAll,
+      exporting,
       btnTrans,
       dialogTrans,
       successTrans,

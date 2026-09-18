@@ -10,8 +10,9 @@ Implemented:
 - List Base databases and collection counts.
 - List, filter and page collections; display document counts and index status.
 - Describe a collection, inspect native field/index types and full metadata.
-- Create collections with configurable shard/replica counts, dimension,
-  HNSW or FLAT, COSINE/L2/IP, and scalar filter indexes.
+- Create collections with configurable shard/replica counts, dense-vector
+  dimension, HNSW or FLAT, COSINE/L2/IP, scalar filter indexes, and an
+  optional `sparse_vector` `SPARSE_INVERTED_INDEX` (IP) for hybrid search.
 - Drop a collection after confirming its name.
 - Query documents by ID or filter, scan with offset pagination, choose returned
   fields and vectors, and use strong or eventual read consistency.
