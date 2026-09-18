@@ -37,9 +37,12 @@ export default function UpsertDocumentsDialog({
 }) {
   const { t } = useTranslation('tcvectordb');
   const compact = useMediaQuery(useTheme().breakpoints.down('sm'));
+  // Editing keeps its single-document editor. Imports stay opaque so a large
+  // JSON file is never parsed or rendered on the browser's main thread.
   const [text, setText] = useState(
-    document ? JSON.stringify([document], null, 2) : '[]'
+    document ? JSON.stringify([document], null, 2) : ''
   );
+  const [file, setFile] = useState<File>();
   const [buildIndex, setBuildIndex] = useState(
     !collection.indexes?.some(
       i =>
@@ -51,27 +54,17 @@ export default function UpsertDocumentsDialog({
   const [error, setError] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
   const parsed = useMemo(() => {
+    if (!document) return { documents: undefined, error: '' };
     try {
       const docs: unknown = JSON.parse(text);
       if (
         !Array.isArray(docs) ||
-        docs.length < 1 ||
-        docs.length > 1000 ||
-        docs.some(
-          doc =>
-            !doc ||
-            typeof doc !== 'object' ||
-            Array.isArray(doc) ||
-            typeof doc.id !== 'string' ||
-            doc.id.length < 1 ||
-            doc.id.length > 128
-        )
-      ) {
-        return { error: t('invalidDocuments'), documents: undefined };
-      }
-      if (
-        new Set(docs.map(doc => doc.id)).size !== docs.length ||
-        (document && (docs.length !== 1 || docs[0].id !== document.id))
+        docs.length !== 1 ||
+        !docs[0] ||
+        typeof docs[0] !== 'object' ||
+        Array.isArray(docs[0]) ||
+        typeof docs[0].id !== 'string' ||
+        docs[0].id !== document.id
       ) {
         return { error: t('invalidDocumentIds'), documents: undefined };
       }
@@ -79,18 +72,28 @@ export default function UpsertDocumentsDialog({
     } catch {
       return { error: t('invalidJson'), documents: undefined };
     }
-  }, [text, document, t]);
+  }, [document, t, text]);
+
   const save = async () => {
-    if (!parsed.documents || busy) return;
+    if (busy || (document ? !parsed.documents : !file)) return;
     setBusy(true);
     setError('');
     try {
-      await TencentVectorDbService.upsertDocuments({
-        database: collection.database,
-        collection: collection.collection,
-        documents: parsed.documents,
-        buildIndex,
-      });
+      if (document) {
+        await TencentVectorDbService.upsertDocuments({
+          database: collection.database,
+          collection: collection.collection,
+          documents: parsed.documents!,
+          buildIndex,
+        });
+      } else {
+        await TencentVectorDbService.importDocuments({
+          database: collection.database,
+          collection: collection.collection,
+          file: file!,
+          buildIndex,
+        });
+      }
       onSaved();
     } catch (e) {
       setError(requestError(e));
@@ -98,6 +101,7 @@ export default function UpsertDocumentsDialog({
       setBusy(false);
     }
   };
+
   return (
     <Dialog open onClose={busy ? undefined : onClose} fullWidth maxWidth="md">
       <DialogTitle>{document ? t('editDocument') : t('upsert')}</DialogTitle>
@@ -109,51 +113,57 @@ export default function UpsertDocumentsDialog({
           <Alert severity="warning" sx={{ color: 'text.primary' }}>
             {t('upsertWarning')}
           </Alert>
-          {!document && (
+          {document ? (
+            <TextField
+              label={t('documentsJson')}
+              multiline
+              minRows={compact ? 6 : 10}
+              maxRows={compact ? 10 : 20}
+              fullWidth
+              value={text}
+              disabled={busy}
+              onChange={e => setText(e.target.value)}
+              inputProps={{ style: { fontFamily: 'monospace', fontSize: 13 } }}
+              error={!!parsed.error}
+              helperText={parsed.error || undefined}
+            />
+          ) : (
             <Box>
               <Button
                 startIcon={<icons.upload />}
                 disabled={busy}
                 onClick={() => fileInput.current?.click()}
               >
-                {t('importJson')}
+                {t('selectJsonFile')}
               </Button>
               <input
                 type="file"
                 accept=".json,application/json"
                 hidden
                 ref={fileInput}
-                onChange={async e => {
-                  const file = e.target.files?.[0];
-                  e.target.value = '';
-                  if (!file) return;
-                  if (file.size > 16 * 1024 * 1024) {
+                onChange={event => {
+                  const selected = event.target.files?.[0];
+                  event.target.value = '';
+                  if (!selected) return;
+                  if (selected.size > 16 * 1024 * 1024) {
+                    setFile(undefined);
                     setError(t('fileTooLarge'));
                     return;
                   }
-                  try {
-                    setText(await file.text());
-                    setError('');
-                  } catch (error) {
-                    setError(requestError(error));
-                  }
+                  setFile(selected);
+                  setError('');
                 }}
               />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {file
+                  ? t('selectedFile', {
+                      name: file.name,
+                      size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+                    })
+                  : t('importJsonFileOnly')}
+              </Typography>
             </Box>
           )}
-          <TextField
-            label={t('documentsJson')}
-            multiline
-            minRows={compact ? 6 : 10}
-            maxRows={compact ? 10 : 20}
-            fullWidth
-            value={text}
-            disabled={busy}
-            onChange={e => setText(e.target.value)}
-            inputProps={{ style: { fontFamily: 'monospace', fontSize: 13 } }}
-            error={!!parsed.error && text !== '[]'}
-            helperText={text !== '[]' ? parsed.error : undefined}
-          />
           <FormControlLabel
             control={
               <Switch
@@ -177,10 +187,10 @@ export default function UpsertDocumentsDialog({
         </Button>
         <Button
           variant="contained"
-          disabled={busy || !parsed.documents}
+          disabled={busy || (document ? !parsed.documents : !file)}
           onClick={() => void save()}
         >
-          {busy ? t('saving') : t('upsert')}
+          {busy ? t('saving') : document ? t('upsert') : t('importJson')}
         </Button>
       </DialogActions>
     </Dialog>

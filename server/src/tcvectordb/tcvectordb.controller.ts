@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response, Router } from 'express';
+import express, { NextFunction, Request, Response, Router } from 'express';
 import HttpErrors from 'http-errors';
 import {
   TencentVectorDbCollectionDto,
@@ -120,6 +120,42 @@ export class TencentVectorDbController {
       this.handle(req =>
         this.service.upsertDocuments({ ...req.body, clientId: req.clientId })
       )
+    );
+    this.router.post(
+      '/documents/import',
+      // The browser streams the selected JSON file as bytes. Keep it out of
+      // React state and parse it only on the backend where document validation
+      // and vector validation already live.
+      express.raw({ type: 'application/octet-stream', limit: '16mb' }),
+      this.handle(req => {
+        const { database, collection, buildIndex } = req.query;
+        if (
+          typeof database !== 'string' ||
+          !database.trim() ||
+          database.length > 128 ||
+          typeof collection !== 'string' ||
+          !/^[a-zA-Z][a-zA-Z0-9_-]{0,127}$/.test(collection) ||
+          (buildIndex !== 'true' && buildIndex !== 'false')
+        ) {
+          throw HttpErrors(400, 'Invalid import target or buildIndex option.');
+        }
+        if (!Buffer.isBuffer(req.body)) {
+          throw HttpErrors(400, 'Upload a JSON file.');
+        }
+        let documents: unknown;
+        try {
+          documents = JSON.parse(req.body.toString('utf8'));
+        } catch {
+          throw HttpErrors(400, 'Invalid JSON file.');
+        }
+        return this.service.upsertDocuments({
+          clientId: req.clientId,
+          database,
+          collection,
+          buildIndex: buildIndex === 'true',
+          documents: documents as any,
+        });
+      })
     );
     this.router.post(
       '/documents/delete',

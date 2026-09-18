@@ -56,6 +56,10 @@ export default {
   upsertWarning:
     '\u5df2\u6709\u76f8\u540c ID \u7684\u6587\u6863\u5c06\u88ab\u5b8c\u6574\u66ff\u6362\u3002',
   importJson: '\u5bfc\u5165 JSON',
+  selectJsonFile: '\u9009\u62e9 JSON \u6587\u4ef6',
+  importJsonFileOnly:
+    '\u6587\u4ef6\u5c06\u5728\u540e\u7aef\u6821\u9a8c\u5e76\u5bfc\u5165\uff0c\u4e0d\u5728\u6d4f\u89c8\u5668\u5c55\u793a\u5185\u5bb9\u3002',
+  selectedFile: '\u5df2\u9009\u62e9\uff1a{{name}}\uff08{{size}}\uff09',
   fileTooLarge: 'JSON \u6587\u4ef6\u4e0d\u80fd\u8d85\u8fc7 16 MB\u3002',
   documentsJson: '\u6587\u6863\uff08JSON \u6570\u7ec4\uff09',
   buildIndex: '\u6784\u5efa\u7d22\u5f15',

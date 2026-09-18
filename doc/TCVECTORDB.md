@@ -21,8 +21,10 @@ Implemented:
   the number of returned rows, not a total; paging does not invent a total.
   Upstream count and collection statistics can briefly lag behind writes/deletes,
   even when a strong-consistency document query already reflects the mutation.
-- Upsert 1-1000 JSON documents from the editor or a JSON file, inspect/export
-  returned JSON, and delete only explicitly selected document IDs.
+- Import 1-1000 JSON documents from a file without loading its contents into
+  the browser. The backend parses and validates the file before upserting;
+  editing an existing single document remains available in the JSON editor.
+  Inspect/export returned JSON, and delete only explicitly selected document IDs.
 - Edit a document after fetching its full contents with vectors and strong
   consistency. Upsert replaces the entire document, including non-indexed fields;
   this is not a partial update or an optimistic concurrency check.
@@ -62,6 +64,7 @@ restart; reconnect when the backend returns HTTP 401.
 | POST /tcvectordb/collections/drop           | database, collection                                                                                                                                  | POST /collection/drop         |
 | POST /tcvectordb/documents/query            | database, collection, limit, offset, optional documentIds/filter/outputFields/retrieveVector/readConsistency                                          | POST /document/query          |
 | POST /tcvectordb/documents/upsert           | database, collection, documents, buildIndex                                                                                                           | POST /document/upsert         |
+| POST /tcvectordb/documents/import           | raw JSON file; database, collection and buildIndex query parameters                                                                                 | Validates then POST /document/upsert |
 | POST /tcvectordb/documents/search           | database, collection, limit, exactly one of vectors/documentIds/embeddingItems, optional filter/outputFields/retrieveVector/readConsistency/ef/nprobe | POST /document/search         |
 | POST /tcvectordb/documents/delete           | database, collection, documentIds                                                                                                                     | POST /document/delete         |
 | POST /tcvectordb/documents/count            | database, collection, optional filter                                                                                                                 | POST /document/count          |

@@ -101,6 +101,25 @@ export class TencentVectorDbService extends BaseModel {
       data,
     });
   }
+  static importDocuments(data: {
+    database: string;
+    collection: string;
+    file: File;
+    buildIndex: boolean;
+  }) {
+    return super.create<ProviderMutationResponse>({
+      path: '/tcvectordb/documents/import',
+      data: data.file,
+      config: {
+        params: {
+          database: data.database,
+          collection: data.collection,
+          buildIndex: String(data.buildIndex),
+        },
+        headers: { 'Content-Type': 'application/octet-stream' },
+      },
+    });
+  }
   static searchDocuments(
     data: Omit<ProviderSearchDocumentsRequest, 'clientId'>
   ) {

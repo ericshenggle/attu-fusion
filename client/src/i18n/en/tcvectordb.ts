@@ -55,6 +55,10 @@ export default {
   upsertWarning:
     'An existing document with the same ID will be replaced in full.',
   importJson: 'Import JSON',
+  selectJsonFile: 'Select JSON file',
+  importJsonFileOnly:
+    'The file is validated and imported by the backend. Its contents are not displayed in the browser.',
+  selectedFile: 'Selected: {{name}} ({{size}})',
   fileTooLarge: 'The JSON file must be no larger than 16 MB.',
   documentsJson: 'Documents (JSON array)',
   buildIndex: 'Build index',
